@@ -2123,10 +2123,21 @@ const EMOJIS = ['😊','😂','🔥','❤️','👍','🎉','😎','🤔','😅'
 })();
 function insertEmoji(e) {
   const input = document.getElementById('message-input');
-  const start = input.selectionStart, end = input.selectionEnd;
+  
+  // Guard clause to prevent the "Cannot read properties of undefined" crash
+  if (!input) {
+    console.error("Could not find element with id 'message-input'");
+    return;
+  }
+
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  
   input.value = input.value.slice(0, start) + e + input.value.slice(end);
   input.selectionStart = input.selectionEnd = start + e.length;
-  input.focus(); closeEmojiPicker(); updateCharCounter(input.value);
+  input.focus();
+  closeEmojiPicker();
+  updateCharCounter(input.value);
 }
 window.toggleEmojiPicker = function() {
   const p = document.getElementById('emoji-picker');
