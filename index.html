@@ -1,0 +1,2506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="description" content="StudentHub — Connect. Communicate. Collaborate.">
+<title>StudentHub — Connect. Communicate. Collaborate.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS & RESET
+═══════════════════════════════════════════ */
+:root {
+  --bg-void: #05050a;
+  --bg-deep: #0a0a14;
+  --bg-surface: #10101e;
+  --bg-raise: #161628;
+  --bg-glass: rgba(16,16,40,0.6);
+  --bg-glass2: rgba(22,22,50,0.45);
+
+  --accent-cyan: #00e5ff;
+  --accent-violet: #7c3aed;
+  --accent-pink: #f72585;
+  --accent-green: #06ffa5;
+  --accent-amber: #ffb703;
+
+  --glow-cyan: 0 0 20px rgba(0,229,255,0.35);
+  --glow-violet: 0 0 20px rgba(124,58,237,0.4);
+  --glow-pink: 0 0 20px rgba(247,37,133,0.35);
+
+  --text-primary: #e8e8f4;
+  --text-secondary: #8888aa;
+  --text-muted: #555570;
+  --text-accent: #00e5ff;
+
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-glow: rgba(0,229,255,0.2);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+  --transition-slow: 0.4s cubic-bezier(0.4,0,0.2,1);
+
+  --sidebar-w: 260px;
+  --topbar-h: 62px;
+}
+
+[data-theme="light"] {
+  --bg-void: #f0f0f8;
+  --bg-deep: #e8e8f5;
+  --bg-surface: #ffffff;
+  --bg-raise: #f5f5ff;
+  --bg-glass: rgba(255,255,255,0.7);
+  --bg-glass2: rgba(240,240,248,0.6);
+  --text-primary: #12121e;
+  --text-secondary: #44446a;
+  --text-muted: #888899;
+  --border-subtle: rgba(0,0,0,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow: hidden;
+  transition: background var(--transition-slow), color var(--transition-slow);
+}
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input, textarea { font-family: inherit; border: none; outline: none; background: none; color: inherit; }
+a { text-decoration: none; color: inherit; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.4); border-radius: 2px; }
+
+/* ═══════════════════════════════════════════
+   ANIMATED BACKGROUND
+═══════════════════════════════════════════ */
+#bg-canvas {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+}
+.bg-orb {
+  position: fixed; border-radius: 50%;
+  filter: blur(80px); opacity: 0.12;
+  animation: orb-drift 20s ease-in-out infinite alternate;
+  pointer-events: none; z-index: 0;
+}
+.bg-orb:nth-child(1) { width: 600px; height: 600px; background: var(--accent-violet); top: -200px; left: -200px; animation-duration: 22s; }
+.bg-orb:nth-child(2) { width: 500px; height: 500px; background: var(--accent-cyan); bottom: -150px; right: -100px; animation-duration: 18s; animation-delay: -9s; }
+.bg-orb:nth-child(3) { width: 400px; height: 400px; background: var(--accent-pink); top: 40%; left: 40%; animation-duration: 25s; animation-delay: -5s; }
+@keyframes orb-drift {
+  0% { transform: translate(0,0) scale(1); }
+  100% { transform: translate(60px,40px) scale(1.1); }
+}
+.grid-overlay {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ═══════════════════════════════════════════
+   SCREENS LAYOUT
+═══════════════════════════════════════════ */
+.screen {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  transition: opacity var(--transition-slow), transform var(--transition-slow);
+}
+.screen.hidden { opacity: 0; pointer-events: none; transform: scale(0.97); }
+
+/* ═══════════════════════════════════════════
+   LANDING SCREEN
+═══════════════════════════════════════════ */
+#landing {
+  flex-direction: column;
+  text-align: center;
+  gap: 0;
+}
+.landing-logo {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 32px; justify-content: center;
+}
+.logo-icon {
+  width: 52px; height: 52px;
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  box-shadow: var(--glow-cyan), 0 0 40px rgba(124,58,237,0.3);
+  animation: pulse-logo 3s ease-in-out infinite;
+}
+@keyframes pulse-logo {
+  0%,100% { box-shadow: var(--glow-cyan), 0 0 40px rgba(124,58,237,0.3); }
+  50% { box-shadow: 0 0 30px rgba(0,229,255,0.6), 0 0 60px rgba(124,58,237,0.4); }
+}
+.logo-name {
+  font-family: var(--font-display);
+  font-size: 28px; font-weight: 800;
+  background: linear-gradient(135deg, #fff 30%, var(--accent-cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.landing-headline {
+  font-family: var(--font-display);
+  font-size: clamp(42px, 7vw, 80px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin-bottom: 20px;
+  background: linear-gradient(160deg, #fff 0%, rgba(255,255,255,0.7) 50%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.landing-sub {
+  font-size: 18px; color: var(--text-secondary);
+  margin-bottom: 48px; max-width: 520px;
+  line-height: 1.6; font-weight: 300;
+}
+.landing-actions {
+  display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+}
+.btn-primary {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+  border-radius: var(--radius-full);
+  font-weight: 600; font-size: 15px; color: #fff;
+  box-shadow: 0 4px 24px rgba(124,58,237,0.4);
+  transition: transform var(--transition), box-shadow var(--transition);
+  position: relative; overflow: hidden;
+}
+.btn-primary::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0; transition: opacity var(--transition);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,0.5); }
+.btn-primary:hover::before { opacity: 1; }
+.btn-secondary {
+  padding: 14px 32px;
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-full);
+  font-weight: 500; font-size: 15px; color: var(--text-accent);
+  background: var(--bg-glass); backdrop-filter: blur(12px);
+  transition: all var(--transition);
+}
+.btn-secondary:hover { background: rgba(0,229,255,0.08); box-shadow: var(--glow-cyan); }
+.landing-stats {
+  display: flex; gap: 48px; margin-top: 64px; justify-content: center;
+  flex-wrap: wrap;
+}
+.stat-item { text-align: center; }
+.stat-num {
+  font-family: var(--font-display); font-size: 32px; font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
+
+/* ═══════════════════════════════════════════
+   AUTH MODAL
+═══════════════════════════════════════════ */
+#auth-screen {
+  z-index: 20;
+}
+.auth-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 32px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: card-in 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes card-in {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.auth-logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.auth-logo-name { font-family: var(--font-display); font-size: 22px; font-weight: 800; }
+.auth-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.auth-subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
+.auth-tabs {
+  display: flex; gap: 4px; background: var(--bg-deep);
+  border-radius: var(--radius-md); padding: 4px;
+  margin-bottom: 24px;
+}
+.auth-tab {
+  flex: 1; padding: 8px; border-radius: 10px;
+  font-size: 14px; font-weight: 500; color: var(--text-secondary);
+  transition: all var(--transition);
+}
+.auth-tab.active { background: var(--accent-violet); color: #fff; box-shadow: var(--glow-violet); }
+.field-group { margin-bottom: 16px; }
+.field-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block; letter-spacing: 0.5px; text-transform: uppercase; }
+.field-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 15px; color: var(--text-primary);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.field-input:focus { border-color: var(--accent-violet); box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+.field-input::placeholder { color: var(--text-muted); }
+.auth-submit {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+  border-radius: var(--radius-md);
+  font-weight: 700; font-size: 15px; color: #fff;
+  margin-top: 8px;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.35);
+  transition: all var(--transition);
+}
+.auth-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(124,58,237,0.45); }
+.auth-submit:active { transform: translateY(0); }
+.auth-error {
+  background: rgba(247,37,133,0.12); border: 1px solid rgba(247,37,133,0.3);
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  font-size: 13px; color: #ff6b9d; margin-top: 12px;
+  display: none;
+}
+.auth-back { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-secondary); }
+.auth-back button { color: var(--accent-cyan); font-weight: 600; transition: opacity var(--transition); }
+.auth-back button:hover { opacity: 0.8; }
+
+/* ═══════════════════════════════════════════
+   MAIN APP LAYOUT
+═══════════════════════════════════════════ */
+#app-screen {
+  align-items: stretch;
+  padding: 0;
+  z-index: 5;
+}
+.app-layout {
+  display: flex; width: 100%; height: 100vh;
+  position: relative;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column;
+  z-index: 50;
+  transition: transform var(--transition-slow);
+}
+.sidebar-header {
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-logo-icon {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+  border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.sidebar-logo-name {
+  font-family: var(--font-display); font-size: 16px; font-weight: 800;
+  background: linear-gradient(135deg, #fff, var(--accent-cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.sidebar-section { padding: 12px 10px 4px; }
+.sidebar-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 2px;
+  color: var(--text-muted); text-transform: uppercase;
+  padding: 0 6px; margin-bottom: 4px;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: var(--radius-md);
+  font-size: 14px; font-weight: 500; color: var(--text-secondary);
+  transition: all var(--transition); cursor: pointer; width: 100%;
+  position: relative;
+}
+.sidebar-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+.sidebar-item.active { background: rgba(124,58,237,0.15); color: var(--accent-cyan); }
+.sidebar-item.active::before {
+  content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 60%; background: var(--accent-violet);
+  border-radius: 0 2px 2px 0;
+}
+.sidebar-item-icon { font-size: 16px; width: 20px; text-align: center; }
+.sidebar-badge {
+  margin-left: auto; background: var(--accent-pink);
+  border-radius: var(--radius-full); font-size: 10px; font-weight: 700;
+  padding: 1px 6px; color: #fff; min-width: 18px; text-align: center;
+}
+.online-dot { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; }
+.dot-online { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+.dot-away { background: var(--accent-amber); }
+.dot-offline { background: var(--text-muted); }
+
+/* Online Users List */
+.online-users { padding: 8px 10px; flex: 1; overflow-y: auto; }
+.online-user-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--radius-md);
+  transition: background var(--transition); cursor: pointer;
+}
+.online-user-item:hover { background: rgba(255,255,255,0.04); }
+.online-user-avatar {
+  width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+  font-size: 12px; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff; flex-shrink: 0;
+  position: relative;
+}
+.online-user-avatar::after {
+  content: ''; position: absolute; bottom: 0; right: 0;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-green); border: 2px solid var(--bg-void);
+}
+.online-user-name { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+
+/* Sidebar Bottom */
+.sidebar-bottom {
+  padding: 12px; border-top: 1px solid var(--border-subtle);
+}
+.user-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: var(--radius-md);
+  background: var(--bg-raise);
+  cursor: pointer; transition: background var(--transition);
+}
+.user-card:hover { background: rgba(255,255,255,0.06); }
+.user-card-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; color: #fff; flex-shrink: 0;
+}
+.user-card-info { flex: 1; min-width: 0; }
+.user-card-name { font-size: 13px; font-weight: 600; truncate; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-card-status { font-size: 11px; color: var(--accent-green); font-weight: 500; }
+.user-card-settings { font-size: 16px; color: var(--text-muted); transition: color var(--transition); }
+.user-card:hover .user-card-settings { color: var(--text-primary); }
+
+/* MAIN AREA */
+.main-area {
+  flex: 1; display: flex; flex-direction: column;
+  min-width: 0; position: relative; overflow: hidden;
+}
+
+/* TOP BAR */
+.topbar {
+  height: var(--topbar-h); flex-shrink: 0;
+  background: var(--bg-glass); backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; padding: 0 20px; gap: 16px;
+}
+.topbar-channel {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 16px;
+}
+.topbar-channel-icon { color: var(--accent-cyan); font-size: 18px; }
+.topbar-divider { width: 1px; height: 24px; background: var(--border-subtle); }
+.topbar-desc { font-size: 13px; color: var(--text-secondary); }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.topbar-btn {
+  width: 36px; height: 36px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; color: var(--text-secondary);
+  transition: all var(--transition); position: relative;
+}
+.topbar-btn:hover { background: rgba(255,255,255,0.07); color: var(--text-primary); }
+.hamburger { display: none; }
+
+/* SEARCH BAR */
+.search-container {
+  flex: 1; max-width: 320px;
+  position: relative;
+}
+.search-input-wrap {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full); padding: 7px 14px;
+  transition: border-color var(--transition);
+}
+.search-input-wrap:focus-within { border-color: var(--accent-violet); }
+.search-input-wrap span { color: var(--text-muted); font-size: 14px; }
+.search-input { flex: 1; font-size: 13px; color: var(--text-primary); }
+.search-input::placeholder { color: var(--text-muted); }
+.search-results {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+  background: var(--bg-glass); backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+  max-height: 300px; overflow-y: auto;
+  display: none; z-index: 100;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+}
+.search-results.open { display: block; }
+.search-result-item {
+  padding: 10px 16px; cursor: pointer; font-size: 13px;
+  transition: background var(--transition); display: flex; align-items: center; gap: 10px;
+}
+.search-result-item:hover { background: rgba(255,255,255,0.05); }
+
+/* MESSAGES AREA */
+.messages-container {
+  flex: 1; overflow-y: auto; padding: 20px;
+  display: flex; flex-direction: column; gap: 4px;
+  scroll-behavior: smooth;
+}
+.messages-container::-webkit-scrollbar { width: 3px; }
+
+/* Date divider */
+.date-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 0; color: var(--text-muted); font-size: 11px;
+  font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+}
+.date-divider::before, .date-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-subtle);
+}
+
+/* MESSAGE BUBBLE */
+.msg-group { margin-bottom: 2px; }
+.msg-wrap {
+  display: flex; gap: 10px; padding: 3px 4px;
+  border-radius: var(--radius-md);
+  transition: background var(--transition);
+  position: relative;
+}
+.msg-wrap:hover { background: rgba(255,255,255,0.03); }
+.msg-wrap:hover .msg-actions { opacity: 1; }
+.msg-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff;
+  margin-top: 2px; cursor: pointer;
+}
+.msg-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.msg-body { flex: 1; min-width: 0; }
+.msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+.msg-username {
+  font-weight: 700; font-size: 14px; cursor: pointer;
+  transition: color var(--transition);
+}
+.msg-username:hover { color: var(--accent-cyan); }
+.msg-time { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+.msg-badge {
+  font-size: 9px; padding: 1px 6px; border-radius: var(--radius-full);
+  font-weight: 700; letter-spacing: 0.5px;
+}
+.badge-admin { background: rgba(247,37,133,0.2); color: var(--accent-pink); }
+.badge-mod { background: rgba(6,255,165,0.15); color: var(--accent-green); }
+.msg-text {
+  font-size: 14px; line-height: 1.6; color: var(--text-primary);
+  word-break: break-word; white-space: pre-wrap;
+}
+.msg-text .mention {
+  color: var(--accent-cyan); background: rgba(0,229,255,0.1);
+  border-radius: 4px; padding: 0 4px; cursor: pointer; font-weight: 600;
+}
+.msg-text .mention:hover { background: rgba(0,229,255,0.2); }
+.msg-edited { font-size: 11px; color: var(--text-muted); font-style: italic; margin-left: 6px; }
+.msg-image { max-width: 320px; border-radius: var(--radius-md); margin-top: 6px; cursor: pointer; transition: opacity var(--transition); }
+.msg-image:hover { opacity: 0.9; }
+
+/* Reply */
+.msg-reply {
+  background: var(--bg-surface); border-left: 3px solid var(--accent-violet);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 6px 10px; margin-bottom: 4px; font-size: 12px;
+  cursor: pointer;
+}
+.msg-reply-author { color: var(--accent-violet); font-weight: 600; margin-bottom: 2px; }
+.msg-reply-text { color: var(--text-muted); }
+
+/* Reactions */
+.msg-reactions { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.reaction-chip {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full); padding: 3px 9px;
+  font-size: 13px; cursor: pointer; transition: all var(--transition);
+}
+.reaction-chip:hover { border-color: var(--accent-violet); background: rgba(124,58,237,0.1); }
+.reaction-chip.reacted { border-color: var(--accent-violet); background: rgba(124,58,237,0.15); }
+.reaction-count { font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+
+/* Message Actions */
+.msg-actions {
+  position: absolute; right: 8px; top: -16px;
+  background: var(--bg-glass); backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  padding: 4px; display: flex; gap: 2px;
+  opacity: 0; transition: opacity var(--transition);
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.msg-action-btn {
+  width: 28px; height: 28px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--text-secondary);
+  transition: all var(--transition);
+}
+.msg-action-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+
+/* Pinned message */
+.pinned-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px; background: rgba(124,58,237,0.1);
+  border-bottom: 1px solid rgba(124,58,237,0.2);
+  font-size: 13px; cursor: pointer;
+}
+.pinned-banner:hover { background: rgba(124,58,237,0.15); }
+.pinned-icon { color: var(--accent-violet); }
+.pinned-text { color: var(--text-secondary); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Typing indicator */
+.typing-indicator {
+  padding: 6px 20px; font-size: 12px; color: var(--text-muted);
+  height: 28px; display: flex; align-items: center; gap: 6px;
+  transition: opacity var(--transition);
+}
+.typing-dots { display: flex; gap: 3px; }
+.typing-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text-muted);
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-bounce {
+  0%,100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* INPUT AREA */
+.input-area {
+  padding: 12px 16px;
+  background: var(--bg-glass); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-subtle);
+}
+.reply-preview {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-surface); border-left: 3px solid var(--accent-violet);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 6px 10px; margin-bottom: 8px; font-size: 12px;
+}
+.reply-preview-content { flex: 1; }
+.reply-preview-author { color: var(--accent-violet); font-weight: 600; margin-bottom: 2px; }
+.reply-preview-text { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reply-close { color: var(--text-muted); font-size: 16px; transition: color var(--transition); }
+.reply-close:hover { color: var(--text-primary); }
+.input-row {
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 10px 12px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.input-row:focus-within { border-color: var(--accent-violet); box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
+.input-btn {
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--text-muted); flex-shrink: 0;
+  transition: all var(--transition);
+}
+.input-btn:hover { color: var(--accent-cyan); background: rgba(0,229,255,0.08); }
+#message-input {
+  flex: 1; min-height: 32px; max-height: 140px;
+  font-size: 14px; line-height: 1.5; resize: none;
+  color: var(--text-primary); overflow-y: auto;
+}
+#message-input::placeholder { color: var(--text-muted); }
+.send-btn {
+  width: 36px; height: 36px; border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: #fff; flex-shrink: 0;
+  transition: all var(--transition);
+  box-shadow: 0 2px 10px rgba(124,58,237,0.4);
+}
+.send-btn:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(124,58,237,0.5); }
+.send-btn:active { transform: scale(0.96); }
+.send-btn:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
+
+/* Emoji picker */
+.emoji-picker {
+  position: absolute; bottom: 70px; left: 20px;
+  background: var(--bg-glass); backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-xl);
+  padding: 12px; width: 300px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+  display: none; z-index: 200;
+}
+.emoji-picker.open { display: block; animation: fade-up 0.2s ease; }
+@keyframes fade-up { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+.emoji-btn { font-size: 20px; padding: 6px; border-radius: var(--radius-sm); cursor: pointer; transition: background var(--transition); text-align: center; }
+.emoji-btn:hover { background: rgba(255,255,255,0.08); }
+
+/* ═══════════════════════════════════════════
+   PANELS (right side)
+═══════════════════════════════════════════ */
+.panel {
+  width: 280px; flex-shrink: 0;
+  background: var(--bg-glass); backdrop-filter: blur(20px);
+  border-left: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column;
+  transition: transform var(--transition-slow), width var(--transition-slow);
+  overflow: hidden;
+}
+.panel.hidden { width: 0; transform: translateX(100%); }
+.panel-header {
+  padding: 18px 16px; border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title { font-weight: 700; font-size: 15px; }
+.panel-close { font-size: 18px; color: var(--text-muted); transition: color var(--transition); }
+.panel-close:hover { color: var(--text-primary); }
+.panel-content { flex: 1; overflow-y: auto; padding: 12px; }
+
+/* ═══════════════════════════════════════════
+   MODALS
+═══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  transition: opacity var(--transition-slow);
+}
+.modal-overlay.hidden { opacity: 0; pointer-events: none; }
+.modal {
+  background: var(--bg-glass2); backdrop-filter: blur(24px);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-xl);
+  width: 100%; max-width: 480px;
+  box-shadow: 0 32px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: card-in 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  overflow: hidden;
+}
+.modal-header {
+  padding: 20px 24px; border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-weight: 700; font-size: 18px; }
+.modal-body { padding: 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-subtle); display: flex; gap: 10px; justify-content: flex-end; }
+.btn-ghost {
+  padding: 9px 20px; border-radius: var(--radius-md);
+  font-size: 14px; font-weight: 500; color: var(--text-secondary);
+  transition: all var(--transition);
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.btn-danger {
+  padding: 9px 20px; border-radius: var(--radius-md);
+  font-size: 14px; font-weight: 600; color: #fff;
+  background: rgba(247,37,133,0.2); border: 1px solid rgba(247,37,133,0.4);
+  transition: all var(--transition);
+}
+.btn-danger:hover { background: rgba(247,37,133,0.35); }
+.btn-sm {
+  padding: 7px 16px; border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 600; color: #fff;
+  background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+  transition: all var(--transition);
+}
+.btn-sm:hover { opacity: 0.9; }
+
+/* Profile modal */
+.profile-avatar-large {
+  width: 72px; height: 72px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 800; color: #fff;
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.profile-name { text-align: center; font-weight: 800; font-size: 20px; margin-bottom: 4px; }
+.profile-status { text-align: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+.profile-stats { display: flex; gap: 16px; justify-content: center; margin-bottom: 24px; }
+.profile-stat { text-align: center; }
+.profile-stat-num { font-weight: 800; font-size: 18px; }
+.profile-stat-label { font-size: 11px; color: var(--text-muted); }
+
+/* Settings Modal */
+.settings-section { margin-bottom: 24px; }
+.settings-section-title { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--border-subtle);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-label { font-size: 14px; font-weight: 500; }
+.settings-sub { font-size: 12px; color: var(--text-muted); }
+.toggle {
+  width: 44px; height: 24px; border-radius: var(--radius-full);
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  cursor: pointer; position: relative; transition: background var(--transition);
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--accent-violet); border-color: var(--accent-violet); }
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  transition: transform var(--transition); box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.toggle.on::after { transform: translateX(20px); }
+
+/* Toast */
+.toast-container {
+  position: fixed; bottom: 20px; right: 20px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 1000; pointer-events: none;
+}
+.toast {
+  background: var(--bg-glass); backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  padding: 12px 16px; font-size: 13px; font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  animation: toast-in 0.3s ease; pointer-events: all;
+  display: flex; align-items: center; gap: 8px; min-width: 200px;
+}
+.toast.success { border-color: rgba(6,255,165,0.3); }
+.toast.error { border-color: rgba(247,37,133,0.3); }
+.toast.info { border-color: rgba(0,229,255,0.3); }
+@keyframes toast-in { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes toast-out { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(16px); } }
+
+/* Poll card */
+.poll-card {
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 14px; margin-top: 6px; max-width: 340px;
+}
+.poll-question { font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+.poll-option {
+  position: relative; padding: 8px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle); margin-bottom: 6px;
+  cursor: pointer; overflow: hidden; transition: border-color var(--transition);
+}
+.poll-option:hover { border-color: var(--accent-violet); }
+.poll-option-bar {
+  position: absolute; inset: 0; border-radius: var(--radius-sm);
+  background: rgba(124,58,237,0.15); transform-origin: left;
+  transition: width 0.5s ease;
+}
+.poll-option-text { position: relative; font-size: 13px; font-weight: 500; }
+.poll-option-pct { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+
+/* Announcement */
+.announcement-msg {
+  background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(0,229,255,0.05));
+  border: 1px solid rgba(124,58,237,0.2); border-radius: var(--radius-md);
+  padding: 12px 16px; margin: 8px 0; display: flex; align-items: flex-start; gap: 10px;
+}
+.announcement-icon { font-size: 20px; flex-shrink: 0; }
+.announcement-body { flex: 1; }
+.announcement-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent-violet); text-transform: uppercase; margin-bottom: 4px; }
+.announcement-text { font-size: 14px; font-weight: 500; }
+
+/* Stats dashboard */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 14px;
+}
+.stat-card-num { font-family: var(--font-display); font-size: 28px; font-weight: 800; }
+.stat-card-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* GIF picker simplified */
+.gif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.gif-item { border-radius: var(--radius-sm); overflow: hidden; cursor: pointer; transition: opacity var(--transition); }
+.gif-item:hover { opacity: 0.85; }
+.gif-item img { width: 100%; display: block; }
+
+/* Image upload preview */
+.image-preview-wrap {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 8px; margin-bottom: 8px;
+}
+.image-preview-thumb { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; }
+.image-preview-name { flex: 1; font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.image-preview-remove { font-size: 16px; color: var(--text-muted); transition: color var(--transition); }
+.image-preview-remove:hover { color: var(--accent-pink); }
+
+/* Mobile overlay */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; z-index: 40;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+}
+
+/* Context Menu */
+.context-menu {
+  position: fixed; z-index: 600;
+  background: var(--bg-glass); backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  padding: 6px; min-width: 160px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+  display: none;
+  animation: fade-up 0.15s ease;
+}
+.context-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background var(--transition); color: var(--text-secondary);
+}
+.context-item:hover { background: rgba(255,255,255,0.07); color: var(--text-primary); }
+.context-item.danger { color: var(--accent-pink); }
+.context-item.danger:hover { background: rgba(247,37,133,0.1); }
+.context-divider { height: 1px; background: var(--border-subtle); margin: 4px 0; }
+
+/* Keyboard shortcut hint */
+.kbd { font-family: var(--font-mono); font-size: 10px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 1px 5px; color: var(--text-muted); }
+
+/* Scrolled-up arrow */
+.scroll-btn {
+  position: absolute; bottom: 80px; right: 20px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent-violet); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; box-shadow: var(--glow-violet);
+  opacity: 0; pointer-events: none; transition: opacity var(--transition);
+  z-index: 30;
+}
+.scroll-btn.visible { opacity: 1; pointer-events: all; }
+
+/* Mention dropdown */
+.mention-dropdown {
+  position: absolute; bottom: 100%; left: 0; right: 0;
+  background: var(--bg-glass); backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  max-height: 180px; overflow-y: auto;
+  display: none; margin-bottom: 4px;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.3);
+}
+.mention-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; cursor: pointer; transition: background var(--transition);
+}
+.mention-item:hover, .mention-item.selected { background: rgba(124,58,237,0.1); }
+.mention-item-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #fff;
+}
+.mention-item-name { font-size: 13px; font-weight: 600; }
+
+/* ═══════════════════════════════════════════
+   MESSAGE ANIMATION
+═══════════════════════════════════════════ */
+.msg-wrap.new-msg {
+  animation: msg-in 0.35s cubic-bezier(0.34,1.4,0.64,1);
+}
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 240px; }
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    transform: translateX(-100%); transition: transform var(--transition-slow);
+    z-index: 100;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity var(--transition-slow); }
+  .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+  .hamburger { display: flex; }
+  .panel { display: none; }
+  .topbar-desc { display: none; }
+  .topbar-divider { display: none; }
+  .search-container { max-width: 180px; }
+  .landing-stats { gap: 24px; }
+}
+
+/* ═══════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════ */
+.hidden { display: none !important; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: 8px; }
+.ml-auto { margin-left: auto; }
+.text-sm { font-size: 13px; }
+.text-muted { color: var(--text-muted); }
+.text-accent { color: var(--accent-cyan); }
+.font-bold { font-weight: 700; }
+.w-full { width: 100%; }
+.relative { position: relative; }
+.mt-2 { margin-top: 8px; }
+
+/* Cooldown spinner */
+.cooldown-ring {
+  width: 36px; height: 36px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.cooldown-ring svg { position: absolute; transform: rotate(-90deg); }
+.cooldown-ring circle { transition: stroke-dashoffset 0.1s linear; }
+.cooldown-num { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--accent-amber); position: relative; z-index: 1; }
+
+/* Avatar color palette */
+.av-0 { background: linear-gradient(135deg, #7c3aed, #00e5ff); }
+.av-1 { background: linear-gradient(135deg, #f72585, #7c3aed); }
+.av-2 { background: linear-gradient(135deg, #06ffa5, #00e5ff); }
+.av-3 { background: linear-gradient(135deg, #ffb703, #f72585); }
+.av-4 { background: linear-gradient(135deg, #00e5ff, #06ffa5); }
+.av-5 { background: linear-gradient(135deg, #3a86ff, #7c3aed); }
+.av-6 { background: linear-gradient(135deg, #ff006e, #ffb703); }
+.av-7 { background: linear-gradient(135deg, #8338ec, #3a86ff); }
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-orb"></div>
+<div class="bg-orb"></div>
+<div class="bg-orb"></div>
+<div class="grid-overlay"></div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="context-menu">
+  <div class="context-item" id="ctx-reply">↩ Reply</div>
+  <div class="context-item" id="ctx-react">😊 Add Reaction</div>
+  <div class="context-item" id="ctx-pin">📌 Pin Message</div>
+  <div class="context-item" id="ctx-save">⭐ Save Message</div>
+  <div class="context-item" id="ctx-copy">📋 Copy Text</div>
+  <div class="context-divider" id="ctx-own-divider"></div>
+  <div class="context-item" id="ctx-edit">✏️ Edit</div>
+  <div class="context-item danger" id="ctx-delete">🗑 Delete</div>
+  <div class="context-divider"></div>
+  <div class="context-item danger" id="ctx-report">🚩 Report</div>
+</div>
+
+<!-- ══════════════ LANDING ══════════════ -->
+<div class="screen" id="landing">
+  <div>
+    <div class="landing-logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-name">StudentHub</div>
+    </div>
+    <h1 class="landing-headline">Connect Beyond<br>Boundaries</h1>
+    <p class="landing-sub">A next-generation communication platform built for the global student community. Real-time. Secure. Beautiful.</p>
+    <div class="landing-actions">
+      <button class="btn-primary" onclick="showAuth('signup')">Get Started Free →</button>
+      <button class="btn-secondary" onclick="showAuth('login')">Sign In</button>
+    </div>
+    <div class="landing-stats">
+      <div class="stat-item">
+        <div class="stat-num" id="stat-users">0</div>
+        <div class="stat-label">Active Users</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-msgs">0</div>
+        <div class="stat-label">Messages Sent</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">150+</div>
+        <div class="stat-label">Countries</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ AUTH ══════════════ -->
+<div class="screen hidden" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <div class="auth-logo-name">StudentHub</div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+      <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create Account</button>
+    </div>
+    <!-- Login -->
+    <div id="form-login">
+      <div class="field-group">
+        <label class="field-label">Email</label>
+        <input class="field-input" type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Password</label>
+        <input class="field-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="auth-submit" onclick="doLogin()">Sign In</button>
+    </div>
+    <!-- Signup -->
+    <div id="form-signup" class="hidden">
+      <div class="field-group">
+        <label class="field-label">Username</label>
+        <input class="field-input" type="text" id="signup-username" placeholder="cooluser123" maxlength="20">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Email</label>
+        <input class="field-input" type="email" id="signup-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Password</label>
+        <input class="field-input" type="password" id="signup-pass" placeholder="Min 6 characters" autocomplete="new-password">
+      </div>
+      <button class="auth-submit" onclick="doSignup()">Create Account</button>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-back"><button onclick="showScreen('landing')">← Back to home</button></div>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div class="screen hidden" id="app-screen">
+  <div class="app-layout">
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo-icon">⚡</div>
+        <div class="sidebar-logo-name">StudentHub</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Channels</div>
+        <button class="sidebar-item active" onclick="setChannel('global')">
+          <span class="sidebar-item-icon">#</span> Global Chat
+          <span class="sidebar-badge hidden" id="unread-badge">0</span>
+        </button>
+        <button class="sidebar-item" onclick="setChannel('announcements')">
+          <span class="sidebar-item-icon">📢</span> Announcements
+        </button>
+        <button class="sidebar-item" onclick="setChannel('saved')">
+          <span class="sidebar-item-icon">⭐</span> Saved Messages
+        </button>
+        <button class="sidebar-item" onclick="openPanel('stats')">
+          <span class="sidebar-item-icon">📊</span> Statistics
+        </button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Online Now</div>
+      </div>
+      <div class="online-users" id="online-users-list">
+        <div class="text-sm text-muted" style="padding:6px 8px;font-style:italic;">Loading...</div>
+      </div>
+
+      <div class="sidebar-bottom">
+        <div class="user-card" onclick="openProfile(currentUser?.uid)">
+          <div class="user-card-avatar" id="sidebar-avatar"></div>
+          <div class="user-card-info">
+            <div class="user-card-name" id="sidebar-username">Loading...</div>
+            <div class="user-card-status">● Online</div>
+          </div>
+          <button class="user-card-settings" onclick="event.stopPropagation();openSettings()">⚙</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-area">
+      <!-- Topbar -->
+      <div class="topbar">
+        <button class="topbar-btn hamburger" onclick="toggleSidebar()">☰</button>
+        <div class="topbar-channel">
+          <span class="topbar-channel-icon">#</span>
+          <span id="channel-name">global</span>
+        </div>
+        <div class="topbar-divider"></div>
+        <div class="topbar-desc" id="channel-desc">Global community · Say hello to the world 🌍</div>
+
+        <div class="search-container relative ml-auto" style="margin-left:auto;" id="search-wrap">
+          <div class="search-input-wrap">
+            <span>🔍</span>
+            <input class="search-input" id="search-input" placeholder="Search messages..." oninput="handleSearch(this.value)">
+          </div>
+          <div class="search-results" id="search-results"></div>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="topbar-btn" onclick="togglePanel('members')" title="Members">👥</button>
+          <button class="topbar-btn" id="sound-toggle-btn" onclick="toggleSound()" title="Sound">🔔</button>
+          <button class="topbar-btn" onclick="togglePanel('pinned')" title="Pinned">📌</button>
+          <button class="topbar-btn" onclick="doLogout()" title="Sign out">🚪</button>
+        </div>
+      </div>
+
+      <!-- Pinned message banner -->
+      <div class="pinned-banner hidden" id="pinned-banner" onclick="togglePanel('pinned')">
+        <span class="pinned-icon">📌</span>
+        <span class="pinned-text" id="pinned-preview">No pinned messages</span>
+        <span class="text-muted text-sm">View all</span>
+      </div>
+
+      <!-- Messages -->
+      <div class="messages-container" id="messages" onscroll="handleMsgScroll()">
+        <div style="flex:1"></div>
+        <!-- messages appended here -->
+      </div>
+
+      <!-- Scroll to bottom -->
+      <button class="scroll-btn" id="scroll-btn" onclick="scrollToBottom(true)" title="Scroll to bottom">↓</button>
+
+      <!-- Typing indicator -->
+      <div class="typing-indicator" id="typing-indicator" style="opacity:0">
+        <div class="typing-dots">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+        <span id="typing-text"></span>
+      </div>
+
+      <!-- Image preview -->
+      <div class="image-preview-wrap hidden" id="image-preview-wrap" style="padding:0 16px;">
+        <img class="image-preview-thumb" id="image-preview-thumb" src="" alt="">
+        <span class="image-preview-name" id="image-preview-name"></span>
+        <button class="image-preview-remove" onclick="clearImageUpload()">✕</button>
+      </div>
+
+      <!-- Input area -->
+      <div class="input-area" id="input-area">
+        <div class="reply-preview hidden" id="reply-preview">
+          <div class="reply-preview-content">
+            <div class="reply-preview-author" id="reply-author"></div>
+            <div class="reply-preview-text" id="reply-text-preview"></div>
+          </div>
+          <button class="reply-close" onclick="clearReply()">✕</button>
+        </div>
+        <div class="relative">
+          <div class="mention-dropdown" id="mention-dropdown"></div>
+          <div class="input-row">
+            <button class="input-btn" onclick="toggleEmojiPicker()" title="Emoji">😊</button>
+            <label class="input-btn" title="Attach image" style="cursor:pointer;">
+              📎
+              <input type="file" id="image-input" accept="image/*" style="display:none" onchange="handleImageSelect(event)">
+            </label>
+            <button class="input-btn" onclick="openPollModal()" title="Create poll">📊</button>
+            <textarea id="message-input" rows="1" placeholder="Message #global..." maxlength="2000"
+              oninput="handleInput(event)" onkeydown="handleKeydown(event)"></textarea>
+            <div id="send-area">
+              <button class="send-btn" id="send-btn" onclick="sendMessage()" title="Send (Enter)">➤</button>
+            </div>
+          </div>
+        </div>
+        <div style="padding:4px 4px 0;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11px;color:var(--text-muted)"><span class="kbd">Enter</span> send · <span class="kbd">Shift+Enter</span> newline · <span class="kbd">@</span> mention</span>
+          <span style="font-size:11px;color:var(--text-muted)" id="char-counter">0/2000</span>
+        </div>
+      </div>
+
+      <!-- Emoji picker -->
+      <div class="emoji-picker" id="emoji-picker">
+        <div class="emoji-grid" id="emoji-grid"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="panel hidden" id="right-panel">
+      <div class="panel-header">
+        <div class="panel-title" id="panel-title">Panel</div>
+        <button class="panel-close" onclick="closePanel()">✕</button>
+      </div>
+      <div class="panel-content" id="panel-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODALS ══════════════ -->
+
+<!-- Profile Modal -->
+<div class="modal-overlay hidden" id="profile-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">User Profile</div>
+      <button class="panel-close" onclick="closeModal('profile-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="profile-avatar-large" id="pm-avatar"></div>
+      <div class="profile-name" id="pm-name"></div>
+      <div class="profile-status" id="pm-status"></div>
+      <div class="profile-stats">
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="pm-msgs">—</div>
+          <div class="profile-stat-label">Messages</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="pm-joined">—</div>
+          <div class="profile-stat-label">Joined</div>
+        </div>
+      </div>
+      <div id="pm-own-controls" class="hidden">
+        <div class="field-group">
+          <label class="field-label">Status Message</label>
+          <input class="field-input" id="pm-status-input" placeholder="What's on your mind?" maxlength="60">
+        </div>
+        <div class="modal-footer" style="padding:0;border:0;margin-top:12px;">
+          <button class="btn-sm" onclick="saveStatus()">Save Status</button>
+          <button class="btn-danger" onclick="doLogout()">Sign Out</button>
+        </div>
+      </div>
+      <div id="pm-other-controls" class="hidden">
+        <div style="display:flex;gap:8px;">
+          <button class="btn-ghost" onclick="blockUser(currentProfileUid)">🚫 Block</button>
+          <button class="btn-danger" onclick="reportUser(currentProfileUid)">🚩 Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙ Settings</div>
+      <button class="panel-close" onclick="closeModal('settings-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-section">
+        <div class="settings-section-title">Appearance</div>
+        <div class="settings-row">
+          <div><div class="settings-label">Dark Mode</div><div class="settings-sub">Default theme</div></div>
+          <div class="toggle on" id="dark-toggle" onclick="toggleDark()"></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Theme Color</div><div class="settings-sub">Accent color</div></div>
+          <div style="display:flex;gap:6px;">
+            <div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#00e5ff);cursor:pointer;" onclick="setTheme('default')"></div>
+            <div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#f72585,#ffb703);cursor:pointer;" onclick="setTheme('pink')"></div>
+            <div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#06ffa5,#00e5ff);cursor:pointer;" onclick="setTheme('green')"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Notifications</div>
+        <div class="settings-row">
+          <div><div class="settings-label">Sound Effects</div><div class="settings-sub">Play sound on message</div></div>
+          <div class="toggle on" id="sound-toggle-setting" onclick="toggleSound()"></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Mention Alerts</div><div class="settings-sub">Notify when @mentioned</div></div>
+          <div class="toggle on" id="mention-toggle"></div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Privacy</div>
+        <div class="settings-row">
+          <div><div class="settings-label">Show Online Status</div><div class="settings-sub">Others can see you're online</div></div>
+          <div class="toggle on" id="presence-toggle" onclick="togglePresence()"></div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Keyboard Shortcuts</div>
+        <div class="settings-row"><div class="settings-label"><span class="kbd">Enter</span> Send message</div></div>
+        <div class="settings-row"><div class="settings-label"><span class="kbd">Shift+Enter</span> New line</div></div>
+        <div class="settings-row"><div class="settings-label"><span class="kbd">Esc</span> Close reply/modal</div></div>
+        <div class="settings-row"><div class="settings-label"><span class="kbd">@</span> Mention user</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Poll Modal -->
+<div class="modal-overlay hidden" id="poll-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📊 Create Poll</div>
+      <button class="panel-close" onclick="closeModal('poll-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label class="field-label">Question</label>
+        <input class="field-input" id="poll-question" placeholder="What do you want to ask?" maxlength="120">
+      </div>
+      <div id="poll-options-wrap">
+        <div class="field-group">
+          <label class="field-label">Options</label>
+          <input class="field-input" id="poll-opt-1" placeholder="Option 1" style="margin-bottom:8px;" maxlength="60">
+          <input class="field-input" id="poll-opt-2" placeholder="Option 2" style="margin-bottom:8px;" maxlength="60">
+          <input class="field-input" id="poll-opt-3" placeholder="Option 3 (optional)" style="margin-bottom:8px;" maxlength="60">
+          <input class="field-input" id="poll-opt-4" placeholder="Option 4 (optional)" maxlength="60">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('poll-modal')">Cancel</button>
+      <button class="btn-sm" onclick="sendPoll()">Post Poll</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay hidden" id="delete-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🗑 Delete Message?</div>
+      <button class="panel-close" onclick="closeModal('delete-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-secondary);font-size:14px;">This action cannot be undone. The message will be permanently removed for everyone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn-danger" onclick="confirmDelete()">Delete Message</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay hidden" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Message</div>
+      <button class="panel-close" onclick="closeModal('edit-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <textarea class="field-input" id="edit-input" rows="4" style="width:100%;resize:vertical;" maxlength="2000"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn-sm" onclick="confirmEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signOut, onAuthStateChanged, updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, getDocs, onSnapshot, doc,
+  updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp,
+  setDoc, getDoc, where, increment, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ══════════════════════════════════════════
+   FIREBASE CONFIG
+   Replace with your own config from Firebase Console
+══════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyAoZxlFcp16LlK8T38TvuwAf5oqQywy1t0",
+  authDomain: "studenthub-d9dc9.firebaseapp.com",
+  projectId: "studenthub-d9dc9",
+  storageBucket: "studenthub-d9dc9.firebasestorage.app",
+  messagingSenderId: "424795503767",
+  appId: "1:424795503767:web:426e382bb69a052b607dd2",
+  measurementId: "G-BLSQZC5PM8"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+window.currentUser = null;
+window.currentProfileUid = null;
+let userData = {};
+let messagesUnsubscribe = null;
+let presenceUnsubscribe = null;
+let typingUnsubscribe = null;
+let allOnlineUsers = {};
+let blockedUsers = new Set();
+let savedMessages = new Set();
+let pinnedMessages = [];
+let replyTo = null;
+let pendingDeleteId = null;
+let pendingEditId = null;
+let pendingContextMsgId = null;
+let pendingContextMsgData = null;
+let soundEnabled = true;
+let presenceEnabled = true;
+let darkMode = true;
+let typingTimeout = null;
+let isTyping = false;
+let cooldownActive = false;
+let cooldownSeconds = 3;
+let imageUploadData = null;
+let imageUploadName = null;
+let emojiPickerOpen = false;
+let currentChannel = 'global';
+let unreadCount = 0;
+let mentionDropdownUsers = [];
+let mentionDropdownIdx = 0;
+let lastMsgTimestamp = null;
+
+/* ══════════════════════════════════════════
+   PROFANITY FILTER (basic)
+══════════════════════════════════════════ */
+const badWords = ['fuck','shit','ass','bitch','damn','crap','piss','dick','cock','pussy'];
+function filterProfanity(text) {
+  let filtered = text;
+  badWords.forEach(w => {
+    const rx = new RegExp(`\\b${w}\\b`, 'gi');
+    filtered = filtered.replace(rx, '*'.repeat(w.length));
+  });
+  return filtered;
+}
+
+/* ══════════════════════════════════════════
+   SPAM PREVENTION
+══════════════════════════════════════════ */
+let recentMessages = [];
+function isSpam(text) {
+  const now = Date.now();
+  recentMessages = recentMessages.filter(t => now - t.time < 5000);
+  const sameCount = recentMessages.filter(m => m.text === text).length;
+  if (sameCount >= 2) return true;
+  if (recentMessages.length >= 5) return true;
+  recentMessages.push({ text, time: now });
+  return false;
+}
+
+/* ══════════════════════════════════════════
+   AVATAR HELPERS
+══════════════════════════════════════════ */
+function avatarClass(uid) {
+  return 'av-' + (uid ? [...uid].reduce((a, c) => a + c.charCodeAt(0), 0) % 8 : 0);
+}
+function avatarHTML(user, size = 34) {
+  const initials = (user.displayName || user.username || 'U').slice(0, 1).toUpperCase();
+  return `<div class="msg-avatar ${avatarClass(user.uid || user.id)}" style="width:${size}px;height:${size}px;" onclick="openProfile('${user.uid || user.id}')" title="${user.displayName || user.username}">${initials}</div>`;
+}
+function sidebarAvatarInit(u) {
+  const el = document.getElementById('sidebar-avatar');
+  if (!el) return;
+  el.textContent = (u.displayName||'U')[0].toUpperCase();
+  el.className = `user-card-avatar ${avatarClass(u.uid)}`;
+}
+
+/* ══════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════ */
+window.showScreen = function(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(name).classList.remove('hidden');
+};
+window.showAuth = function(tab='login') {
+  showScreen('auth-screen');
+  switchTab(tab);
+};
+window.switchTab = function(tab) {
+  document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('form-signup').classList.toggle('hidden', tab !== 'signup');
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+  document.getElementById('auth-error').style.display = 'none';
+};
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+window.doLogin = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!email || !pass) return showAuthError('Please fill all fields.');
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    showAuthError(e.message.replace('Firebase: ','').replace(/\(auth.*\)/,''));
+  }
+};
+window.doSignup = async function() {
+  const username = document.getElementById('signup-username').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const pass = document.getElementById('signup-pass').value;
+  if (!username || !email || !pass) return showAuthError('Please fill all fields.');
+  if (username.length < 2) return showAuthError('Username must be at least 2 characters.');
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) return showAuthError('Username: letters, numbers, underscore only.');
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, { displayName: username });
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      username, email, joinDate: serverTimestamp(),
+      status: '✨ New to StudentHub!', msgCount: 0
+    });
+    showToast('🎉 Welcome to StudentHub!', 'success');
+  } catch(e) {
+    showAuthError(e.message.replace('Firebase: ','').replace(/\(auth.*\)/,''));
+  }
+};
+window.doLogout = async function() {
+  if (currentUser) {
+    await setDoc(doc(db, 'presence', currentUser.uid), { online: false }, { merge: true });
+    await setDoc(doc(db, 'typing', currentUser.uid), { typing: false }, { merge: true });
+  }
+  await signOut(auth);
+  showScreen('landing');
+  showToast('👋 Signed out. See you soon!', 'info');
+};
+
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    window.currentUser = user;
+    document.getElementById('sidebar-username').textContent = user.displayName || 'User';
+    sidebarAvatarInit(user);
+    const uRef = doc(db, 'users', user.uid);
+    const uSnap = await getDoc(uRef);
+    if (uSnap.exists()) userData = uSnap.data();
+    showScreen('app-screen');
+    initPresence();
+    initChat();
+    loadOnlineUsers();
+    loadStats();
+    document.querySelector('#message-input').placeholder = `Message #${currentChannel}...`;
+  }
+});
+
+/* ══════════════════════════════════════════
+   PRESENCE
+══════════════════════════════════════════ */
+async function initPresence() {
+  if (!currentUser) return;
+  await setDoc(doc(db, 'presence', currentUser.uid), {
+    uid: currentUser.uid,
+    username: currentUser.displayName || 'User',
+    online: true,
+    lastSeen: serverTimestamp()
+  }, { merge: true });
+  window.addEventListener('beforeunload', async () => {
+    await setDoc(doc(db, 'presence', currentUser.uid), { online: false }, { merge: true });
+  });
+}
+function loadOnlineUsers() {
+  const q = query(collection(db, 'presence'), where('online', '==', true));
+  presenceUnsubscribe = onSnapshot(q, snap => {
+    allOnlineUsers = {};
+    snap.forEach(d => { allOnlineUsers[d.id] = d.data(); });
+    renderOnlineUsers();
+    updateStats();
+  });
+}
+function renderOnlineUsers() {
+  const list = document.getElementById('online-users-list');
+  const users = Object.values(allOnlineUsers).filter(u => !blockedUsers.has(u.uid));
+  if (!users.length) { list.innerHTML = '<div class="text-sm text-muted" style="padding:6px 8px;font-style:italic;">No one online</div>'; return; }
+  list.innerHTML = users.map(u => `
+    <div class="online-user-item" onclick="openProfile('${u.uid}')">
+      <div class="online-user-avatar ${avatarClass(u.uid)}" style="font-size:11px;font-weight:700;color:#fff;">${(u.username||'U')[0].toUpperCase()}</div>
+      <span class="online-user-name">${esc(u.username||'User')}</span>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════
+   CHAT
+══════════════════════════════════════════ */
+function initChat() {
+  if (messagesUnsubscribe) messagesUnsubscribe();
+  const msgsEl = document.getElementById('messages');
+  // Load last 10 messages
+  const q = query(collection(db, 'messages'), orderBy('timestamp', 'desc'), limit(10));
+  getDocs(q).then(snap => {
+    const msgs = [];
+    snap.forEach(d => msgs.unshift({ id: d.id, ...d.data() }));
+    msgs.forEach(m => renderMessage(m, false));
+    scrollToBottom();
+    // Now subscribe to new
+    const latest = msgs.length ? msgs[msgs.length-1].timestamp : null;
+    subscribeToNew(latest);
+  });
+  // Typing
+  const tq = query(collection(db, 'typing'));
+  typingUnsubscribe = onSnapshot(tq, snap => {
+    const typers = [];
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.typing && d.id !== currentUser?.uid) typers.push(data.username || 'Someone');
+    });
+    const el = document.getElementById('typing-indicator');
+    const txt = document.getElementById('typing-text');
+    if (typers.length) {
+      txt.textContent = typers.length === 1 ? `${typers[0]} is typing...` : `${typers.slice(0,-1).join(', ')} and ${typers[typers.length-1]} are typing...`;
+      el.style.opacity = '1';
+    } else {
+      el.style.opacity = '0';
+    }
+  });
+}
+
+function subscribeToNew(afterTimestamp) {
+  let q;
+  if (afterTimestamp) {
+    q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'), where('timestamp', '>', afterTimestamp));
+  } else {
+    q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'));
+  }
+  messagesUnsubscribe = onSnapshot(q, snap => {
+    snap.docChanges().forEach(change => {
+      if (change.type === 'added') {
+        const data = { id: change.doc.id, ...change.doc.data() };
+        if (blockedUsers.has(data.uid)) return;
+        renderMessage(data, true);
+        const msgsEl = document.getElementById('messages');
+        const atBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 120;
+        if (atBottom) scrollToBottom();
+        else if (data.uid !== currentUser?.uid) {
+          unreadCount++;
+          updateUnreadBadge();
+          if (data.text && data.text.includes(`@${currentUser.displayName}`)) {
+            showToast(`📣 ${data.username} mentioned you!`, 'info');
+            playMentionSound();
+          } else if (soundEnabled) playMsgSound();
+        }
+      } else if (change.type === 'modified') {
+        const data = { id: change.doc.id, ...change.doc.data() };
+        updateMessageEl(data);
+      } else if (change.type === 'removed') {
+        const el = document.getElementById('msg-' + change.doc.id);
+        if (el) el.remove();
+      }
+    });
+  });
+}
+
+function renderMessage(msg, animate = true) {
+  const msgsEl = document.getElementById('messages');
+  if (document.getElementById('msg-' + msg.id)) return;
+  const el = document.createElement('div');
+  el.id = 'msg-' + msg.id;
+  el.className = 'msg-wrap' + (animate ? ' new-msg' : '');
+  el.dataset.uid = msg.uid;
+  el.setAttribute('data-msg', JSON.stringify({
+    id: msg.id, text: msg.text||'', uid: msg.uid,
+    username: msg.username, replyTo: msg.replyTo||null,
+    image: msg.image||null, poll: msg.poll||null
+  }));
+  el.addEventListener('contextmenu', e => { e.preventDefault(); openContextMenu(e, msg); });
+  el.innerHTML = buildMessageHTML(msg);
+  msgsEl.appendChild(el);
+}
+
+function buildMessageHTML(msg) {
+  const isOwn = msg.uid === currentUser?.uid;
+  const initials = (msg.username||'U')[0].toUpperCase();
+  const avClass = avatarClass(msg.uid);
+  const ts = msg.timestamp?.toDate ? formatTime(msg.timestamp.toDate()) : 'just now';
+
+  let replyHTML = '';
+  if (msg.replyTo) {
+    replyHTML = `<div class="msg-reply" onclick="scrollToMsg('${msg.replyTo.id}')">
+      <div class="msg-reply-author">↩ ${esc(msg.replyTo.username)}</div>
+      <div class="msg-reply-text">${esc(msg.replyTo.text||'[Image]').slice(0,80)}</div>
+    </div>`;
+  }
+
+  let contentHTML = '';
+  if (msg.type === 'poll' && msg.poll) {
+    const total = Object.values(msg.poll.votes||{}).reduce((a,v)=>a+v,0)||1;
+    contentHTML = `<div class="poll-card">
+      <div class="poll-question">📊 ${esc(msg.poll.question)}</div>
+      ${msg.poll.options.map((opt,i) => {
+        const votes = (msg.poll.votes||{})[i]||0;
+        const pct = Math.round(votes/total*100);
+        return `<div class="poll-option" onclick="votePoll('${msg.id}',${i})">
+          <div class="poll-option-bar" style="width:${pct}%"></div>
+          <span class="poll-option-text">${esc(opt)}</span>
+          <span class="poll-option-pct">${pct}%</span>
+        </div>`;
+      }).join('')}
+      <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">${total} vote${total!==1?'s':''}</div>
+    </div>`;
+  } else if (msg.type === 'announcement') {
+    contentHTML = `<div class="announcement-msg">
+      <div class="announcement-icon">📢</div>
+      <div class="announcement-body">
+        <div class="announcement-label">Announcement</div>
+        <div class="announcement-text">${formatMsgText(msg.text||'')}</div>
+      </div>
+    </div>`;
+  } else {
+    contentHTML = `<div class="msg-text">${formatMsgText(msg.text||'')}${msg.edited?'<span class="msg-edited">(edited)</span>':''}</div>`;
+    if (msg.image) {
+      contentHTML += `<img class="msg-image" src="${msg.image}" alt="Image" onclick="openImageViewer('${msg.image}')">`;
+    }
+  }
+
+  const reactions = msg.reactions || {};
+  const reactionHTML = Object.entries(reactions).filter(([,v])=>v>0).map(([emoji,count]) => {
+    const reacted = (msg.reactedBy||{})[emoji]?.includes(currentUser?.uid);
+    return `<div class="reaction-chip ${reacted?'reacted':''}" onclick="toggleReaction('${msg.id}','${emoji}')">
+      <span>${emoji}</span><span class="reaction-count">${count}</span>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="msg-avatar ${avClass}" onclick="openProfile('${msg.uid}')">${initials}</div>
+    <div class="msg-body">
+      ${replyHTML}
+      <div class="msg-header">
+        <span class="msg-username" style="color:var(--accent-cyan)" onclick="openProfile('${msg.uid}')">${esc(msg.username||'User')}</span>
+        ${isOwn ? '<span class="msg-badge badge-mod">You</span>' : ''}
+        <span class="msg-time">${ts}</span>
+      </div>
+      ${contentHTML}
+      ${reactionHTML ? `<div class="msg-reactions">${reactionHTML}</div>` : ''}
+    </div>
+    <div class="msg-actions">
+      <button class="msg-action-btn" onclick="setReply('${msg.id}','${esc(msg.username||'User')}','${esc((msg.text||'').replace(/'/g,"\\'").slice(0,60))}')" title="Reply">↩</button>
+      <button class="msg-action-btn" onclick="quickReact('${msg.id}')" title="React">😊</button>
+      ${isOwn ? `<button class="msg-action-btn" onclick="openEdit('${msg.id}',\`${(msg.text||'').replace(/`/g,"\\`")}\`)" title="Edit">✏️</button>` : ''}
+      ${isOwn ? `<button class="msg-action-btn" onclick="openDelete('${msg.id}')" title="Delete" style="color:var(--accent-pink)">🗑</button>` : ''}
+    </div>`;
+}
+
+function updateMessageEl(msg) {
+  const el = document.getElementById('msg-' + msg.id);
+  if (!el) return;
+  el.dataset.uid = msg.uid;
+  el.setAttribute('data-msg', JSON.stringify({ id: msg.id, text: msg.text||'', uid: msg.uid, username: msg.username }));
+  el.innerHTML = buildMessageHTML(msg);
+}
+
+function formatMsgText(text) {
+  let t = esc(text);
+  // Mentions
+  t = t.replace(/@(\w+)/g, '<span class="mention" onclick="openMentionProfile(\'$1\')">@$1</span>');
+  // URLs
+  t = t.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:underline;">$1</a>');
+  return t;
+}
+
+window.openMentionProfile = function(username) {
+  // Find user by username
+  getDocs(query(collection(db, 'users'), where('username', '==', username))).then(snap => {
+    if (!snap.empty) openProfile(snap.docs[0].id);
+  });
+};
+
+window.scrollToMsg = function(id) {
+  const el = document.getElementById('msg-' + id);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.style.background = 'rgba(124,58,237,0.15)';
+    setTimeout(() => el.style.background = '', 1500);
+  }
+};
+
+/* ══════════════════════════════════════════
+   SEND MESSAGE
+══════════════════════════════════════════ */
+window.sendMessage = async function() {
+  if (!currentUser) return;
+  const input = document.getElementById('message-input');
+  let text = input.value.trim();
+  if (!text && !imageUploadData) return;
+  if (cooldownActive) { showToast('⏳ Please wait a moment.', 'error'); return; }
+  if (isSpam(text)) { showToast('🚫 Slow down! You\'re sending too fast.', 'error'); return; }
+
+  text = filterProfanity(text);
+  const msgData = {
+    uid: currentUser.uid,
+    username: currentUser.displayName || 'User',
+    text: text || '',
+    timestamp: serverTimestamp(),
+    reactions: {}, reactedBy: {},
+    edited: false, channel: currentChannel
+  };
+  if (replyTo) { msgData.replyTo = replyTo; clearReply(); }
+  if (imageUploadData) { msgData.image = imageUploadData; clearImageUpload(); }
+
+  try {
+    await addDoc(collection(db, 'messages'), msgData);
+    await updateDoc(doc(db, 'users', currentUser.uid), { msgCount: increment(1) });
+    input.value = ''; input.style.height = 'auto';
+    updateCharCounter('');
+    startCooldown();
+    stopTyping();
+    unreadCount = 0; updateUnreadBadge();
+  } catch(e) {
+    showToast('❌ Failed to send message.', 'error');
+    console.error(e);
+  }
+};
+
+/* ══════════════════════════════════════════
+   INPUT HANDLING
+══════════════════════════════════════════ */
+window.handleInput = function(e) {
+  const el = e.target;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  updateCharCounter(el.value);
+  handleTypingIndicator();
+  handleMentionDropdown(el.value, el.selectionStart);
+};
+
+window.handleKeydown = function(e) {
+  const dropdown = document.getElementById('mention-dropdown');
+  if (dropdown.style.display === 'block') {
+    if (e.key === 'ArrowDown') { e.preventDefault(); mentionDropdownIdx = Math.min(mentionDropdownIdx+1, mentionDropdownUsers.length-1); renderMentionDropdown(); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); mentionDropdownIdx = Math.max(mentionDropdownIdx-1, 0); renderMentionDropdown(); return; }
+    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); selectMention(mentionDropdownUsers[mentionDropdownIdx]); return; }
+    if (e.key === 'Escape') { dropdown.style.display = 'none'; return; }
+  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  if (e.key === 'Escape') { clearReply(); closeEmojiPicker(); }
+};
+
+function updateCharCounter(val) {
+  document.getElementById('char-counter').textContent = `${val.length}/2000`;
+}
+
+/* Mention dropdown */
+function handleMentionDropdown(text, caret) {
+  const before = text.slice(0, caret);
+  const match = before.match(/@(\w*)$/);
+  if (!match) { document.getElementById('mention-dropdown').style.display = 'none'; return; }
+  const query_ = match[1].toLowerCase();
+  mentionDropdownUsers = Object.values(allOnlineUsers).filter(u =>
+    (u.username||'').toLowerCase().startsWith(query_) && u.uid !== currentUser?.uid
+  ).slice(0, 5);
+  if (!mentionDropdownUsers.length) { document.getElementById('mention-dropdown').style.display = 'none'; return; }
+  mentionDropdownIdx = 0;
+  renderMentionDropdown();
+  document.getElementById('mention-dropdown').style.display = 'block';
+}
+function renderMentionDropdown() {
+  const el = document.getElementById('mention-dropdown');
+  el.innerHTML = mentionDropdownUsers.map((u,i) => `
+    <div class="mention-item${i===mentionDropdownIdx?' selected':''}" onclick="selectMention(${JSON.stringify(u).replace(/"/g,'&quot;')})">
+      <div class="mention-item-avatar ${avatarClass(u.uid)}">${(u.username||'U')[0].toUpperCase()}</div>
+      <span class="mention-item-name">${esc(u.username)}</span>
+    </div>`).join('');
+}
+window.selectMention = function(user) {
+  const input = document.getElementById('message-input');
+  const before = input.value.slice(0, input.selectionStart);
+  const after = input.value.slice(input.selectionStart);
+  const newBefore = before.replace(/@\w*$/, '@' + user.username + ' ');
+  input.value = newBefore + after;
+  input.focus();
+  document.getElementById('mention-dropdown').style.display = 'none';
+};
+
+/* Typing indicator */
+function handleTypingIndicator() {
+  if (!currentUser) return;
+  if (!isTyping) {
+    isTyping = true;
+    setDoc(doc(db, 'typing', currentUser.uid), { typing: true, username: currentUser.displayName }, { merge: true });
+  }
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(stopTyping, 2500);
+}
+function stopTyping() {
+  if (!currentUser || !isTyping) return;
+  isTyping = false;
+  setDoc(doc(db, 'typing', currentUser.uid), { typing: false }, { merge: true });
+}
+
+/* ══════════════════════════════════════════
+   COOLDOWN
+══════════════════════════════════════════ */
+function startCooldown() {
+  cooldownActive = true;
+  let remaining = cooldownSeconds;
+  const sendArea = document.getElementById('send-area');
+  sendArea.innerHTML = `<div class="cooldown-ring">
+    <svg width="36" height="36" viewBox="0 0 36 36">
+      <circle cx="18" cy="18" r="14" fill="none" stroke="var(--bg-surface)" stroke-width="3"/>
+      <circle cx="18" cy="18" r="14" fill="none" stroke="var(--accent-amber)" stroke-width="3"
+        stroke-dasharray="${2*Math.PI*14}" stroke-dashoffset="0" id="cool-circle"/>
+    </svg>
+    <span class="cooldown-num" id="cool-num">${remaining}</span>
+  </div>`;
+  const total = 2 * Math.PI * 14;
+  const interval = setInterval(() => {
+    remaining -= 0.1;
+    const offset = total * (1 - remaining/cooldownSeconds);
+    const circle = document.getElementById('cool-circle');
+    const num = document.getElementById('cool-num');
+    if (circle) circle.style.strokeDashoffset = offset;
+    if (num) num.textContent = Math.ceil(remaining);
+    if (remaining <= 0) {
+      clearInterval(interval);
+      cooldownActive = false;
+      sendArea.innerHTML = `<button class="send-btn" id="send-btn" onclick="sendMessage()" title="Send (Enter)">➤</button>`;
+    }
+  }, 100);
+}
+
+/* ══════════════════════════════════════════
+   REACTIONS
+══════════════════════════════════════════ */
+window.toggleReaction = async function(msgId, emoji) {
+  if (!currentUser) return;
+  const msgRef = doc(db, 'messages', msgId);
+  const snap = await getDoc(msgRef);
+  if (!snap.exists()) return;
+  const data = snap.data();
+  const reactions = data.reactions || {};
+  const reactedBy = data.reactedBy || {};
+  const users = reactedBy[emoji] || [];
+  const alreadyReacted = users.includes(currentUser.uid);
+  if (alreadyReacted) {
+    reactions[emoji] = Math.max(0, (reactions[emoji]||1) - 1);
+    reactedBy[emoji] = users.filter(u => u !== currentUser.uid);
+  } else {
+    reactions[emoji] = (reactions[emoji]||0) + 1;
+    reactedBy[emoji] = [...users, currentUser.uid];
+  }
+  await updateDoc(msgRef, { reactions, reactedBy });
+};
+window.quickReact = function(msgId) {
+  const quickEmojis = ['👍','❤️','😂','🔥','🎉'];
+  const emoji = quickEmojis[Math.floor(Math.random() * quickEmojis.length)];
+  toggleReaction(msgId, emoji);
+};
+
+/* ══════════════════════════════════════════
+   REPLY
+══════════════════════════════════════════ */
+window.setReply = function(id, username, text) {
+  replyTo = { id, username, text };
+  document.getElementById('reply-preview').classList.remove('hidden');
+  document.getElementById('reply-author').textContent = '↩ ' + username;
+  document.getElementById('reply-text-preview').textContent = text;
+  document.getElementById('message-input').focus();
+};
+window.clearReply = function() {
+  replyTo = null;
+  document.getElementById('reply-preview').classList.add('hidden');
+};
+
+/* ══════════════════════════════════════════
+   EDIT / DELETE
+══════════════════════════════════════════ */
+window.openEdit = function(id, text) {
+  pendingEditId = id;
+  document.getElementById('edit-input').value = text;
+  openModal('edit-modal');
+};
+window.confirmEdit = async function() {
+  if (!pendingEditId) return;
+  const newText = document.getElementById('edit-input').value.trim();
+  if (!newText) return;
+  await updateDoc(doc(db, 'messages', pendingEditId), { text: filterProfanity(newText), edited: true });
+  closeModal('edit-modal');
+  showToast('✅ Message updated.', 'success');
+  pendingEditId = null;
+};
+window.openDelete = function(id) {
+  pendingDeleteId = id;
+  openModal('delete-modal');
+};
+window.confirmDelete = async function() {
+  if (!pendingDeleteId) return;
+  await deleteDoc(doc(db, 'messages', pendingDeleteId));
+  closeModal('delete-modal');
+  showToast('🗑 Message deleted.', 'info');
+  pendingDeleteId = null;
+};
+
+/* ══════════════════════════════════════════
+   PIN / SAVE
+══════════════════════════════════════════ */
+window.pinMessage = async function(msgId) {
+  const snap = await getDoc(doc(db, 'messages', msgId));
+  if (!snap.exists()) return;
+  const data = snap.data();
+  pinnedMessages = [{ id: msgId, ...data }, ...pinnedMessages.filter(p => p.id !== msgId)].slice(0, 5);
+  const banner = document.getElementById('pinned-banner');
+  banner.classList.remove('hidden');
+  document.getElementById('pinned-preview').textContent = data.text || '[Image]';
+  showToast('📌 Message pinned.', 'success');
+};
+window.saveMessage = function(msgId) {
+  savedMessages.has(msgId) ? savedMessages.delete(msgId) : savedMessages.add(msgId);
+  showToast(savedMessages.has(msgId) ? '⭐ Message saved.' : '⭐ Message unsaved.', 'info');
+};
+
+/* ══════════════════════════════════════════
+   POLL
+══════════════════════════════════════════ */
+window.openPollModal = function() { openModal('poll-modal'); };
+window.sendPoll = async function() {
+  const question = document.getElementById('poll-question').value.trim();
+  const opts = [1,2,3,4].map(i => document.getElementById('poll-opt-'+i).value.trim()).filter(Boolean);
+  if (!question || opts.length < 2) { showToast('❌ Provide a question and at least 2 options.', 'error'); return; }
+  await addDoc(collection(db, 'messages'), {
+    uid: currentUser.uid, username: currentUser.displayName,
+    type: 'poll', text: '', timestamp: serverTimestamp(),
+    poll: { question, options: opts, votes: {}, votedBy: {} },
+    reactions: {}, reactedBy: {}
+  });
+  closeModal('poll-modal');
+  [1,2,3,4].forEach(i => document.getElementById('poll-opt-'+i).value='');
+  document.getElementById('poll-question').value='';
+};
+window.votePoll = async function(msgId, optIdx) {
+  if (!currentUser) return;
+  const ref = doc(db, 'messages', msgId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const data = snap.data();
+  const poll = data.poll;
+  if ((poll.votedBy||{})[currentUser.uid] !== undefined) { showToast('You already voted!', 'info'); return; }
+  const votes = { ...(poll.votes||{}) };
+  votes[optIdx] = (votes[optIdx]||0) + 1;
+  const votedBy = { ...(poll.votedBy||{}), [currentUser.uid]: optIdx };
+  await updateDoc(ref, { 'poll.votes': votes, 'poll.votedBy': votedBy });
+};
+
+/* ══════════════════════════════════════════
+   IMAGE UPLOAD
+══════════════════════════════════════════ */
+window.handleImageSelect = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('❌ Image must be under 5MB.', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imageUploadData = ev.target.result;
+    imageUploadName = file.name;
+    document.getElementById('image-preview-thumb').src = imageUploadData;
+    document.getElementById('image-preview-name').textContent = file.name;
+    document.getElementById('image-preview-wrap').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+};
+window.clearImageUpload = function() {
+  imageUploadData = null; imageUploadName = null;
+  document.getElementById('image-preview-wrap').classList.add('hidden');
+  document.getElementById('image-input').value = '';
+};
+
+/* ══════════════════════════════════════════
+   IMAGE VIEWER
+══════════════════════════════════════════ */
+window.openImageViewer = function(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+  overlay.innerHTML = `<img src="${src}" style="max-width:90vw;max-height:90vh;border-radius:12px;box-shadow:0 32px 64px rgba(0,0,0,0.5);">`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+};
+
+/* ══════════════════════════════════════════
+   EMOJI PICKER
+══════════════════════════════════════════ */
+const EMOJIS = ['😊','😂','🔥','❤️','👍','🎉','😎','🤔','😅','🌟','💯','🚀','👏','💪','😍','🥳','🤩','😇','🤯','💥','⚡','🌈','🎯','🏆','🎮','📚','🌍','💡','✨','🤝','😮','😢','😠','👀','💤','🎵','🍕','🎂','☕','🌺'];
+(function initEmoji() {
+  const grid = document.getElementById('emoji-grid');
+  if (!grid) return;
+  EMOJIS.forEach(e => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-btn'; btn.textContent = e;
+    btn.onclick = () => { insertEmoji(e); };
+    grid.appendChild(btn);
+  });
+})();
+function insertEmoji(e) {
+  const input = document.getElementById('message-input');
+  const start = input.selectionStart, end = input.selectionEnd;
+  input.value = input.value.slice(0, start) + e + input.value.slice(end);
+  input.selectionStart = input.selectionEnd = start + e.length;
+  input.focus(); closeEmojiPicker(); updateCharCounter(input.value);
+}
+window.toggleEmojiPicker = function() {
+  const p = document.getElementById('emoji-picker');
+  emojiPickerOpen = !emojiPickerOpen;
+  p.classList.toggle('open', emojiPickerOpen);
+};
+function closeEmojiPicker() { emojiPickerOpen = false; document.getElementById('emoji-picker').classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.emoji-picker') && !e.target.closest('.input-btn')) closeEmojiPicker();
+  if (!e.target.closest('.search-container')) document.getElementById('search-results').classList.remove('open');
+  if (!e.target.closest('.context-menu')) document.getElementById('context-menu').style.display = 'none';
+});
+
+/* ══════════════════════════════════════════
+   SEARCH
+══════════════════════════════════════════ */
+window.handleSearch = async function(val) {
+  const results = document.getElementById('search-results');
+  if (!val.trim()) { results.classList.remove('open'); return; }
+  results.innerHTML = '<div class="search-result-item">Searching...</div>';
+  results.classList.add('open');
+  const q = query(collection(db, 'messages'), orderBy('timestamp', 'desc'), limit(50));
+  const snap = await getDocs(q);
+  const matches = [];
+  snap.forEach(d => {
+    const data = d.data();
+    if ((data.text||'').toLowerCase().includes(val.toLowerCase())) {
+      matches.push({ id: d.id, ...data });
+    }
+  });
+  if (!matches.length) { results.innerHTML = '<div class="search-result-item text-muted">No results found.</div>'; return; }
+  results.innerHTML = matches.slice(0, 8).map(m => `
+    <div class="search-result-item" onclick="scrollToMsg('${m.id}');document.getElementById('search-results').classList.remove('open');">
+      <div class="msg-avatar ${avatarClass(m.uid)}" style="width:24px;height:24px;font-size:10px;flex-shrink:0;">${(m.username||'U')[0]}</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;">${esc(m.username||'User')}</div>
+        <div style="font-size:12px;color:var(--text-muted);">${esc((m.text||'').slice(0,60))}</div>
+      </div>
+    </div>`).join('');
+};
+
+/* ══════════════════════════════════════════
+   PROFILE MODAL
+══════════════════════════════════════════ */
+window.openProfile = async function(uid) {
+  if (!uid) return;
+  window.currentProfileUid = uid;
+  const isOwn = uid === currentUser?.uid;
+  const snap = await getDoc(doc(db, 'users', uid));
+  const data = snap.exists() ? snap.data() : {};
+  const displayName = data.username || currentUser?.displayName || 'User';
+  const el = document.getElementById('pm-avatar');
+  el.className = `profile-avatar-large ${avatarClass(uid)}`;
+  el.textContent = displayName[0].toUpperCase();
+  document.getElementById('pm-name').textContent = displayName;
+  document.getElementById('pm-status').textContent = data.status || '✨ StudentHub member';
+  document.getElementById('pm-msgs').textContent = data.msgCount || 0;
+  document.getElementById('pm-joined').textContent = data.joinDate?.toDate ? formatDate(data.joinDate.toDate()) : 'Today';
+  document.getElementById('pm-own-controls').classList.toggle('hidden', !isOwn);
+  document.getElementById('pm-other-controls').classList.toggle('hidden', isOwn);
+  if (isOwn) document.getElementById('pm-status-input').value = data.status || '';
+  openModal('profile-modal');
+};
+
+window.saveStatus = async function() {
+  const status = document.getElementById('pm-status-input').value.trim();
+  if (!currentUser) return;
+  await updateDoc(doc(db, 'users', currentUser.uid), { status });
+  document.getElementById('pm-status').textContent = status;
+  showToast('✅ Status updated.', 'success');
+};
+
+/* ══════════════════════════════════════════
+   CONTEXT MENU
+══════════════════════════════════════════ */
+function openContextMenu(e, msg) {
+  pendingContextMsgId = msg.id;
+  pendingContextMsgData = msg;
+  const isOwn = msg.uid === currentUser?.uid;
+  const cm = document.getElementById('context-menu');
+  document.getElementById('ctx-edit').style.display = isOwn ? '' : 'none';
+  document.getElementById('ctx-delete').style.display = isOwn ? '' : 'none';
+  document.getElementById('ctx-own-divider').style.display = isOwn ? '' : 'none';
+  cm.style.display = 'block';
+  const x = Math.min(e.clientX, window.innerWidth - 180);
+  const y = Math.min(e.clientY, window.innerHeight - 260);
+  cm.style.left = x + 'px'; cm.style.top = y + 'px';
+}
+document.getElementById('ctx-reply').onclick = () => {
+  if (pendingContextMsgData) setReply(pendingContextMsgData.id, pendingContextMsgData.username, pendingContextMsgData.text||'');
+  document.getElementById('context-menu').style.display='none';
+};
+document.getElementById('ctx-react').onclick = () => {
+  if (pendingContextMsgId) quickReact(pendingContextMsgId);
+  document.getElementById('context-menu').style.display='none';
+};
+document.getElementById('ctx-pin').onclick = () => {
+  if (pendingContextMsgId) pinMessage(pendingContextMsgId);
+  document.getElementById('context-menu').style.display='none';
+};
+document.getElementById('ctx-save').onclick = () => {
+  if (pendingContextMsgId) saveMessage(pendingContextMsgId);
+  document.getElementById('context-menu').style.display='none';
+};
+document.getElementById('ctx-copy').onclick = () => {
+  if (pendingContextMsgData?.text) navigator.clipboard.writeText(pendingContextMsgData.text).then(()=>showToast('📋 Copied!','info'));
+  document.getElementById('context-menu').style.display='none';
+};
+document.getElementById('ctx-edit').onclick = () => {
+  if (pendingContextMsgData) openEdit(pendingContextMsgData.id, pendingContextMsgData.text||'');
+  document.getElementById('context-menu').style.display='none';
+};
+document.getElementById('ctx-delete').onclick = () => {
+  if (pendingContextMsgId) openDelete(pendingContextMsgId);
+  document.getElementById('context-menu').style.display='none';
+};
+document.getElementById('ctx-report').onclick = () => {
+  showToast('🚩 Message reported. Thank you.', 'info');
+  document.getElementById('context-menu').style.display='none';
+};
+
+/* ══════════════════════════════════════════
+   PANELS
+══════════════════════════════════════════ */
+let currentPanel = null;
+window.togglePanel = function(name) {
+  if (currentPanel === name) { closePanel(); return; }
+  openPanel(name);
+};
+window.openPanel = function(name) {
+  currentPanel = name;
+  const panel = document.getElementById('right-panel');
+  const title = document.getElementById('panel-title');
+  const content = document.getElementById('panel-content');
+  panel.classList.remove('hidden');
+  if (name === 'members') {
+    title.textContent = '👥 Online Members';
+    content.innerHTML = Object.values(allOnlineUsers).map(u => `
+      <div class="online-user-item" onclick="openProfile('${u.uid}')">
+        <div class="online-user-avatar ${avatarClass(u.uid)}" style="width:34px;height:34px;font-size:13px;font-weight:700;color:#fff;">${(u.username||'U')[0].toUpperCase()}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;">${esc(u.username||'User')}</div>
+          <div style="font-size:11px;color:var(--accent-green);">● Online</div>
+        </div>
+      </div>`).join('') || '<div class="text-muted text-sm" style="padding:8px;">No users online.</div>';
+  } else if (name === 'pinned') {
+    title.textContent = '📌 Pinned Messages';
+    content.innerHTML = pinnedMessages.length ? pinnedMessages.map(p => `
+      <div class="msg-reply" style="margin-bottom:8px;" onclick="scrollToMsg('${p.id}')">
+        <div class="msg-reply-author">${esc(p.username||'User')}</div>
+        <div class="msg-reply-text">${esc((p.text||'[Image]').slice(0,100))}</div>
+      </div>`).join('') : '<div class="text-muted text-sm" style="padding:8px;">No pinned messages yet.</div>';
+  } else if (name === 'stats') {
+    title.textContent = '📊 Community Stats';
+    const onlineCount = Object.keys(allOnlineUsers).length;
+    content.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-card-num" style="color:var(--accent-cyan)">${onlineCount}</div><div class="stat-card-label">Online Now</div></div>
+        <div class="stat-card"><div class="stat-card-num" style="color:var(--accent-violet)" id="panel-total-msgs">—</div><div class="stat-card-label">Total Messages</div></div>
+        <div class="stat-card"><div class="stat-card-num" style="color:var(--accent-green)" id="panel-total-users">—</div><div class="stat-card-label">Total Members</div></div>
+        <div class="stat-card"><div class="stat-card-num" style="color:var(--accent-pink)">150+</div><div class="stat-card-label">Countries</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:12px;text-align:center;">Stats update in real time</div>`;
+    loadStats(true);
+  } else if (name === 'saved') {
+    title.textContent = '⭐ Saved Messages';
+    if (!savedMessages.size) { content.innerHTML = '<div class="text-muted text-sm" style="padding:8px;">No saved messages yet. Right-click a message to save it.</div>'; return; }
+    content.innerHTML = [...savedMessages].map(id => `<div class="msg-reply" style="margin-bottom:8px;" onclick="scrollToMsg('${id}')"><div class="msg-reply-author">Message #${id.slice(0,6)}</div></div>`).join('');
+  }
+};
+window.closePanel = function() {
+  currentPanel = null;
+  document.getElementById('right-panel').classList.add('hidden');
+};
+
+/* ══════════════════════════════════════════
+   CHANNELS
+══════════════════════════════════════════ */
+window.setChannel = function(name) {
+  currentChannel = name;
+  document.getElementById('channel-name').textContent = name;
+  const descs = { global: 'Global community · Say hello to the world 🌍', announcements: '📢 Important announcements from the team', saved: '⭐ Your saved messages' };
+  document.getElementById('channel-desc').textContent = descs[name] || '';
+  if (name === 'saved') { openPanel('saved'); }
+  else if (name === 'announcements') {
+    // Show announcements channel content
+    document.getElementById('channel-desc').textContent = '📢 Announcements from the team';
+  }
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  event?.target?.closest('.sidebar-item')?.classList.add('active');
+};
+
+/* ══════════════════════════════════════════
+   MODALS
+══════════════════════════════════════════ */
+window.openModal = function(id) { document.getElementById(id).classList.remove('hidden'); };
+window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); };
+window.openSettings = function() { openModal('settings-modal'); };
+
+/* ══════════════════════════════════════════
+   SETTINGS TOGGLES
+══════════════════════════════════════════ */
+window.toggleDark = function() {
+  darkMode = !darkMode;
+  document.documentElement.dataset.theme = darkMode ? 'dark' : 'light';
+  document.getElementById('dark-toggle').classList.toggle('on', darkMode);
+};
+window.toggleSound = function() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('sound-toggle-setting').classList.toggle('on', soundEnabled);
+  document.getElementById('sound-toggle-btn').textContent = soundEnabled ? '🔔' : '🔕';
+  showToast(soundEnabled ? '🔔 Sound on' : '🔕 Sound off', 'info');
+};
+window.togglePresence = function() {
+  presenceEnabled = !presenceEnabled;
+  document.getElementById('presence-toggle').classList.toggle('on', presenceEnabled);
+  if (currentUser) {
+    setDoc(doc(db, 'presence', currentUser.uid), { online: presenceEnabled }, { merge: true });
+  }
+};
+window.setTheme = function(theme) {
+  const themes = {
+    default: { violet: '#7c3aed', cyan: '#00e5ff' },
+    pink: { violet: '#f72585', cyan: '#ffb703' },
+    green: { violet: '#06ffa5', cyan: '#00e5ff' }
+  };
+  const t = themes[theme] || themes.default;
+  document.documentElement.style.setProperty('--accent-violet', t.violet);
+  document.documentElement.style.setProperty('--accent-cyan', t.cyan);
+  showToast('🎨 Theme applied!', 'success');
+};
+
+/* ══════════════════════════════════════════
+   BLOCK / REPORT
+══════════════════════════════════════════ */
+window.blockUser = function(uid) {
+  blockedUsers.add(uid);
+  closeModal('profile-modal');
+  showToast('🚫 User blocked.', 'info');
+};
+window.reportUser = function(uid) {
+  closeModal('profile-modal');
+  showToast('🚩 User reported. Our team will review.', 'info');
+};
+
+/* ══════════════════════════════════════════
+   SIDEBAR TOGGLE (MOBILE)
+══════════════════════════════════════════ */
+window.toggleSidebar = function() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+};
+
+/* ══════════════════════════════════════════
+   SCROLL
+══════════════════════════════════════════ */
+function scrollToBottom(smooth=false) {
+  const el = document.getElementById('messages');
+  el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+  unreadCount = 0; updateUnreadBadge();
+}
+window.handleMsgScroll = function() {
+  const el = document.getElementById('messages');
+  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  document.getElementById('scroll-btn').classList.toggle('visible', !atBottom);
+  if (atBottom) { unreadCount = 0; updateUnreadBadge(); }
+};
+
+/* ══════════════════════════════════════════
+   UNREAD BADGE
+══════════════════════════════════════════ */
+function updateUnreadBadge() {
+  const badge = document.getElementById('unread-badge');
+  if (unreadCount > 0) { badge.textContent = unreadCount > 99 ? '99+' : unreadCount; badge.classList.remove('hidden'); }
+  else badge.classList.add('hidden');
+  document.title = unreadCount > 0 ? `(${unreadCount}) StudentHub` : 'StudentHub';
+}
+
+/* ══════════════════════════════════════════
+   STATS
+══════════════════════════════════════════ */
+async function loadStats(inPanel=false) {
+  const [usersSnap, msgsSnap] = await Promise.all([
+    getDocs(collection(db, 'users')),
+    getDocs(collection(db, 'messages'))
+  ]);
+  const totalUsers = usersSnap.size;
+  const totalMsgs = msgsSnap.size;
+  document.getElementById('stat-users').textContent = totalUsers > 0 ? totalUsers + '+' : '0';
+  document.getElementById('stat-msgs').textContent = totalMsgs > 0 ? totalMsgs + '+' : '0';
+  if (inPanel) {
+    const pu = document.getElementById('panel-total-users');
+    const pm = document.getElementById('panel-total-msgs');
+    if (pu) pu.textContent = totalUsers;
+    if (pm) pm.textContent = totalMsgs;
+  }
+}
+function updateStats() {
+  document.getElementById('stat-users').textContent = Object.keys(allOnlineUsers).length + '+';
+}
+
+/* ══════════════════════════════════════════
+   SOUND
+══════════════════════════════════════════ */
+function playMsgSound() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime+0.08);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.12);
+    osc.start(); osc.stop(ctx.currentTime+0.12);
+  } catch(e) {}
+}
+function playMentionSound() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [660,880,1100].forEach((f,i) => {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = f; gain.gain.setValueAtTime(0.12, ctx.currentTime+i*0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+i*0.1+0.1);
+      osc.start(ctx.currentTime+i*0.1); osc.stop(ctx.currentTime+i*0.1+0.12);
+    });
+  } catch(e) {}
+}
+
+/* ══════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════ */
+window.showToast = function(msg, type='info') {
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'toast-out 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+};
+
+/* ══════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════ */
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function formatTime(date) {
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday) return date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  return date.toLocaleDateString([], { month:'short', day:'numeric' }) + ' ' + date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+}
+function formatDate(date) {
+  return date.toLocaleDateString([], { year:'numeric', month:'short', day:'numeric' });
+}
+
+/* Animate landing stats counter */
+function animateCounter(el, target) {
+  let current = 0;
+  const step = Math.max(1, Math.floor(target / 60));
+  const interval = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = current + '+';
+    if (current >= target) clearInterval(interval);
+  }, 30);
+}
+
+/* Initial stats animation on landing */
+setTimeout(() => {
+  animateCounter(document.getElementById('stat-users'), 0);
+  animateCounter(document.getElementById('stat-msgs'), 0);
+}, 500);
+loadStats();
+</script>
+
+</body>
+</html>
