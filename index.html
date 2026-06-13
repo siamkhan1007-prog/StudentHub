@@ -1394,10 +1394,10 @@ import {
   signOut, onAuthStateChanged, updateProfile
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, getDocs, onSnapshot, doc,
-  updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp,
-  setDoc, getDoc, where, increment, writeBatch
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  getDatabase, ref, push, set, get, update, remove,
+  onValue, onChildAdded, onChildChanged, onChildRemoved,
+  serverTimestamp, query as dbQuery, orderByChild, limitToLast, off
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 /* ══════════════════════════════════════════
    FIREBASE CONFIG
@@ -1410,11 +1410,12 @@ const firebaseConfig = {
   storageBucket: "studenthub-d9dc9.firebasestorage.app",
   messagingSenderId: "424795503767",
   appId: "1:424795503767:web:426e382bb69a052b607dd2",
-  measurementId: "G-BLSQZC5PM8"
+  measurementId: "G-BLSQZC5PM8",
+  databaseURL: "https://studenthub-d9dc9-default-rtdb.firebaseio.com"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = getDatabase(app);
 
 /* ══════════════════════════════════════════
    STATE
@@ -1544,7 +1545,7 @@ window.doSignup = async function() {
     // Must await updateProfile so displayName is set before onAuthStateChanged fires
     await updateProfile(cred.user, { displayName: username });
     // Firestore user doc can be fire-and-forget (non-critical for chat)
-    setDoc(doc(db, 'users', cred.user.uid), {
+    set(ref(db, 'users/' + cred.user.uid), {
       username, email, joinDate: serverTimestamp(),
       status: '✨ New to StudentHub!', msgCount: 0
     });
@@ -1556,8 +1557,8 @@ window.doSignup = async function() {
 };
 window.doLogout = async function() {
   if (currentUser) {
-    await setDoc(doc(db, 'presence', currentUser.uid), { online: false }, { merge: true });
-    await setDoc(doc(db, 'typing', currentUser.uid), { typing: false }, { merge: true });
+    await set(ref(db, 'presence/' + currentUser.uid + '/online'), false);
+    await set(ref(db, 'typing/' + currentUser.uid + '/typing'), false);
   }
   await signOut(auth);
   showScreen('landing');
@@ -1571,18 +1572,14 @@ onAuthStateChanged(auth, async user => {
     sidebarAvatarInit(user);
     document.querySelector('#message-input').placeholder = `Message #${currentChannel}...`;
 
-    // Show the app immediately — don't block on Firestore
     showScreen('app-screen');
 
-    // Kick off all background tasks in parallel — none of these need to block the UI
-    Promise.all([
-      getDoc(doc(db, 'users', user.uid)).then(snap => { if (snap.exists()) userData = snap.data(); }),
-      initPresence(),
-      loadOnlineUsers(),
-      loadStats()
-    ]).catch(e => console.warn('Background init error', e));
+    // Load user profile data
+    get(ref(db, 'users/' + user.uid)).then(snap => { if (snap.exists()) userData = snap.val(); });
 
-    // Start chat listener immediately (non-blocking)
+    initPresence();
+    loadOnlineUsers();
+    loadStats();
     initChat();
   }
 });
@@ -1592,21 +1589,29 @@ onAuthStateChanged(auth, async user => {
 ══════════════════════════════════════════ */
 async function initPresence() {
   if (!currentUser) return;
-  await setDoc(doc(db, 'presence', currentUser.uid), {
+  const presRef = ref(db, 'presence/' + currentUser.uid);
+  await set(presRef, {
     uid: currentUser.uid,
     username: currentUser.displayName || 'User',
     online: true,
     lastSeen: serverTimestamp()
-  }, { merge: true });
-  window.addEventListener('beforeunload', async () => {
-    await setDoc(doc(db, 'presence', currentUser.uid), { online: false }, { merge: true });
+  });
+  // Mark offline on disconnect (RTDB native feature)
+  const { onDisconnect } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+  onDisconnect(presRef).update({ online: false });
+  window.addEventListener('beforeunload', () => {
+    set(ref(db, 'presence/' + currentUser.uid + '/online'), false);
   });
 }
 function loadOnlineUsers() {
-  const q = query(collection(db, 'presence'), where('online', '==', true));
-  presenceUnsubscribe = onSnapshot(q, snap => {
+  const presRef = ref(db, 'presence');
+  presenceUnsubscribe = () => off(presRef);
+  onValue(presRef, snap => {
     allOnlineUsers = {};
-    snap.forEach(d => { allOnlineUsers[d.id] = d.data(); });
+    snap.forEach(child => {
+      const d = child.val();
+      if (d.online) allOnlineUsers[child.key] = d;
+    });
     renderOnlineUsers();
     updateStats();
   });
@@ -1629,54 +1634,64 @@ function initChat() {
   if (messagesUnsubscribe) messagesUnsubscribe();
   const msgsEl = document.getElementById('messages');
   let initialLoad = true;
+  const loadedKeys = new Set();
 
-  // Single onSnapshot — replaces the broken getDocs+subscribeToNew pattern.
-  // The old approach passed the last message's serverTimestamp() as a cursor,
-  // but serverTimestamp() is null locally until Firestore confirms the write,
-  // so the where('timestamp', '>', null) filter silently dropped all messages
-  // for every other connected user.
-  const q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'), limit(60));
-  messagesUnsubscribe = onSnapshot(q, snap => {
-    snap.docChanges().forEach(change => {
-      if (change.type === 'added') {
-        const data = { id: change.doc.id, ...change.doc.data() };
-        if (blockedUsers.has(data.uid)) return;
-        renderMessage(data, !initialLoad);
-        if (!initialLoad) {
-          const atBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 120;
-          if (atBottom) scrollToBottom();
-          else if (data.uid !== currentUser?.uid) {
-            unreadCount++;
-            updateUnreadBadge();
-            if (data.text && data.text.includes(`@${currentUser.displayName}`)) {
-              showToast(`📣 ${data.username} mentioned you!`, 'info');
-              playMentionSound();
-            } else if (soundEnabled) playMsgSound();
-          }
-        }
-      } else if (change.type === 'modified') {
-        const data = { id: change.doc.id, ...change.doc.data() };
-        updateMessageEl(data);
-      } else if (change.type === 'removed') {
-        const el = document.getElementById('msg-' + change.doc.id);
-        if (el) el.remove();
+  // Load last 60 messages, then listen for new ones
+  const msgsRef = dbQuery(ref(db, 'messages'), orderByChild('timestamp'), limitToLast(60));
+
+  // onValue fires once with all existing messages, then again on every change
+  const valueHandler = onValue(msgsRef, snap => {
+    if (!initialLoad) return; // after first load, use child listeners
+    msgsEl.querySelectorAll('.msg-wrap').forEach(el => el.remove());
+    snap.forEach(child => {
+      const data = { id: child.key, ...child.val() };
+      loadedKeys.add(child.key);
+      if (!blockedUsers.has(data.uid)) renderMessage(data, false);
+    });
+    initialLoad = false;
+    scrollToBottom();
+    // Now wire up live child listeners
+    onChildAdded(msgsRef, child => {
+      if (loadedKeys.has(child.key)) return; // already rendered
+      const data = { id: child.key, ...child.val() };
+      loadedKeys.add(child.key);
+      if (blockedUsers.has(data.uid)) return;
+      renderMessage(data, true);
+      const atBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 120;
+      if (atBottom) scrollToBottom();
+      else if (data.uid !== currentUser?.uid) {
+        unreadCount++;
+        updateUnreadBadge();
+        if (data.text && data.text.includes('@' + currentUser.displayName)) {
+          showToast('📣 ' + data.username + ' mentioned you!', 'info');
+          playMentionSound();
+        } else if (soundEnabled) playMsgSound();
       }
     });
-    if (initialLoad) { initialLoad = false; scrollToBottom(); }
+    onChildChanged(msgsRef, child => {
+      updateMessageEl({ id: child.key, ...child.val() });
+    });
+    onChildRemoved(msgsRef, child => {
+      const el = document.getElementById('msg-' + child.key);
+      if (el) el.remove();
+    });
   });
 
+  messagesUnsubscribe = () => off(ref(db, 'messages'));
+
   // Typing indicator
-  const tq = query(collection(db, 'typing'));
-  typingUnsubscribe = onSnapshot(tq, snap => {
+  const typingRef = ref(db, 'typing');
+  typingUnsubscribe = () => off(typingRef);
+  onValue(typingRef, snap => {
     const typers = [];
-    snap.forEach(d => {
-      const data = d.data();
-      if (data.typing && d.id !== currentUser?.uid) typers.push(data.username || 'Someone');
+    snap.forEach(child => {
+      const data = child.val();
+      if (data.typing && child.key !== currentUser?.uid) typers.push(data.username || 'Someone');
     });
     const el = document.getElementById('typing-indicator');
     const txt = document.getElementById('typing-text');
     if (typers.length) {
-      txt.textContent = typers.length === 1 ? `${typers[0]} is typing...` : `${typers.slice(0,-1).join(', ')} and ${typers[typers.length-1]} are typing...`;
+      txt.textContent = typers.length === 1 ? typers[0] + ' is typing...' : typers.slice(0,-1).join(', ') + ' and ' + typers[typers.length-1] + ' are typing...';
       el.style.opacity = '1';
     } else {
       el.style.opacity = '0';
@@ -1705,7 +1720,7 @@ function buildMessageHTML(msg) {
   const isOwn = msg.uid === currentUser?.uid;
   const initials = (msg.username||'U')[0].toUpperCase();
   const avClass = avatarClass(msg.uid);
-  const ts = msg.timestamp?.toDate ? formatTime(msg.timestamp.toDate()) : 'just now';
+  const ts = msg.timestamp ? formatTime(new Date(msg.timestamp)) : 'just now';
 
   let replyHTML = '';
   if (msg.replyTo) {
@@ -1793,8 +1808,13 @@ function formatMsgText(text) {
 
 window.openMentionProfile = function(username) {
   // Find user by username
-  getDocs(query(collection(db, 'users'), where('username', '==', username))).then(snap => {
-    if (!snap.empty) openProfile(snap.docs[0].id);
+  // RTDB: scan users for matching username
+  get(ref(db, 'users')).then(snap => {
+    snap.forEach(child => {
+      if ((child.val().username||'').toLowerCase() === username.toLowerCase()) {
+        openProfile(child.key);
+      }
+    });
   });
 };
 
@@ -1831,8 +1851,11 @@ window.sendMessage = async function() {
   if (imageUploadData) { msgData.image = imageUploadData; clearImageUpload(); }
 
   try {
-    await addDoc(collection(db, 'messages'), msgData);
-    await updateDoc(doc(db, 'users', currentUser.uid), { msgCount: increment(1) });
+    await push(ref(db, 'messages'), msgData);
+    // Increment msgCount
+    get(ref(db, 'users/' + currentUser.uid + '/msgCount')).then(snap => {
+      set(ref(db, 'users/' + currentUser.uid + '/msgCount'), (snap.val() || 0) + 1);
+    });
     input.value = ''; input.style.height = 'auto';
     updateCharCounter('');
     startCooldown();
@@ -1909,7 +1932,7 @@ function handleTypingIndicator() {
   if (!currentUser) return;
   if (!isTyping) {
     isTyping = true;
-    setDoc(doc(db, 'typing', currentUser.uid), { typing: true, username: currentUser.displayName }, { merge: true });
+    set(ref(db, 'typing/' + currentUser.uid), { typing: true, username: currentUser.displayName });
   }
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(stopTyping, 2500);
@@ -1917,7 +1940,7 @@ function handleTypingIndicator() {
 function stopTyping() {
   if (!currentUser || !isTyping) return;
   isTyping = false;
-  setDoc(doc(db, 'typing', currentUser.uid), { typing: false }, { merge: true });
+  set(ref(db, 'typing/' + currentUser.uid), { typing: false, username: currentUser.displayName || '' });
 }
 
 /* ══════════════════════════════════════════
@@ -1956,22 +1979,23 @@ function startCooldown() {
 ══════════════════════════════════════════ */
 window.toggleReaction = async function(msgId, emoji) {
   if (!currentUser) return;
-  const msgRef = doc(db, 'messages', msgId);
-  const snap = await getDoc(msgRef);
+  const msgRef = ref(db, 'messages/' + msgId);
+  const snap = await get(msgRef);
   if (!snap.exists()) return;
-  const data = snap.data();
-  const reactions = data.reactions || {};
-  const reactedBy = data.reactedBy || {};
-  const users = reactedBy[emoji] || [];
+  const data = snap.val();
+  const reactions = { ...(data.reactions || {}) };
+  const reactedBy = { ...(data.reactedBy || {}) };
+  const users = reactedBy[emoji] ? Object.values(reactedBy[emoji]) : [];
   const alreadyReacted = users.includes(currentUser.uid);
   if (alreadyReacted) {
     reactions[emoji] = Math.max(0, (reactions[emoji]||1) - 1);
-    reactedBy[emoji] = users.filter(u => u !== currentUser.uid);
+    const filtered = users.filter(u => u !== currentUser.uid);
+    reactedBy[emoji] = filtered.length ? filtered : null;
   } else {
     reactions[emoji] = (reactions[emoji]||0) + 1;
     reactedBy[emoji] = [...users, currentUser.uid];
   }
-  await updateDoc(msgRef, { reactions, reactedBy });
+  await update(msgRef, { reactions, reactedBy });
 };
 window.quickReact = function(msgId) {
   const quickEmojis = ['👍','❤️','😂','🔥','🎉'];
@@ -2006,7 +2030,7 @@ window.confirmEdit = async function() {
   if (!pendingEditId) return;
   const newText = document.getElementById('edit-input').value.trim();
   if (!newText) return;
-  await updateDoc(doc(db, 'messages', pendingEditId), { text: filterProfanity(newText), edited: true });
+  await update(ref(db, 'messages/' + pendingEditId), { text: filterProfanity(newText), edited: true });
   closeModal('edit-modal');
   showToast('✅ Message updated.', 'success');
   pendingEditId = null;
@@ -2017,7 +2041,7 @@ window.openDelete = function(id) {
 };
 window.confirmDelete = async function() {
   if (!pendingDeleteId) return;
-  await deleteDoc(doc(db, 'messages', pendingDeleteId));
+  await remove(ref(db, 'messages/' + pendingDeleteId));
   closeModal('delete-modal');
   showToast('🗑 Message deleted.', 'info');
   pendingDeleteId = null;
@@ -2027,9 +2051,9 @@ window.confirmDelete = async function() {
    PIN / SAVE
 ══════════════════════════════════════════ */
 window.pinMessage = async function(msgId) {
-  const snap = await getDoc(doc(db, 'messages', msgId));
+  const snap = await get(ref(db, 'messages/' + msgId));
   if (!snap.exists()) return;
-  const data = snap.data();
+  const data = snap.val();
   pinnedMessages = [{ id: msgId, ...data }, ...pinnedMessages.filter(p => p.id !== msgId)].slice(0, 5);
   const banner = document.getElementById('pinned-banner');
   banner.classList.remove('hidden');
@@ -2049,7 +2073,7 @@ window.sendPoll = async function() {
   const question = document.getElementById('poll-question').value.trim();
   const opts = [1,2,3,4].map(i => document.getElementById('poll-opt-'+i).value.trim()).filter(Boolean);
   if (!question || opts.length < 2) { showToast('❌ Provide a question and at least 2 options.', 'error'); return; }
-  await addDoc(collection(db, 'messages'), {
+  await push(ref(db, 'messages'), {
     uid: currentUser.uid, username: currentUser.displayName,
     type: 'poll', text: '', timestamp: serverTimestamp(),
     poll: { question, options: opts, votes: {}, votedBy: {} },
@@ -2061,16 +2085,16 @@ window.sendPoll = async function() {
 };
 window.votePoll = async function(msgId, optIdx) {
   if (!currentUser) return;
-  const ref = doc(db, 'messages', msgId);
-  const snap = await getDoc(ref);
+  const msgRef = ref(db, 'messages/' + msgId);
+  const snap = await get(msgRef);
   if (!snap.exists()) return;
-  const data = snap.data();
+  const data = snap.val();
   const poll = data.poll;
   if ((poll.votedBy||{})[currentUser.uid] !== undefined) { showToast('You already voted!', 'info'); return; }
   const votes = { ...(poll.votes||{}) };
   votes[optIdx] = (votes[optIdx]||0) + 1;
   const votedBy = { ...(poll.votedBy||{}), [currentUser.uid]: optIdx };
-  await updateDoc(ref, { 'poll.votes': votes, 'poll.votedBy': votedBy });
+  await update(msgRef, { 'poll/votes': votes, 'poll/votedBy': votedBy });
 };
 
 /* ══════════════════════════════════════════
@@ -2159,13 +2183,12 @@ window.handleSearch = async function(val) {
   if (!val.trim()) { results.classList.remove('open'); return; }
   results.innerHTML = '<div class="search-result-item">Searching...</div>';
   results.classList.add('open');
-  const q = query(collection(db, 'messages'), orderBy('timestamp', 'desc'), limit(50));
-  const snap = await getDocs(q);
+  const snap = await get(dbQuery(ref(db, 'messages'), orderByChild('timestamp'), limitToLast(50)));
   const matches = [];
-  snap.forEach(d => {
-    const data = d.data();
+  snap.forEach(child => {
+    const data = child.val();
     if ((data.text||'').toLowerCase().includes(val.toLowerCase())) {
-      matches.push({ id: d.id, ...data });
+      matches.push({ id: child.key, ...data });
     }
   });
   if (!matches.length) { results.innerHTML = '<div class="search-result-item text-muted">No results found.</div>'; return; }
@@ -2186,8 +2209,8 @@ window.openProfile = async function(uid) {
   if (!uid) return;
   window.currentProfileUid = uid;
   const isOwn = uid === currentUser?.uid;
-  const snap = await getDoc(doc(db, 'users', uid));
-  const data = snap.exists() ? snap.data() : {};
+  const snap = await get(ref(db, 'users/' + uid));
+  const data = snap.exists() ? snap.val() : {};
   const displayName = data.username || currentUser?.displayName || 'User';
   const el = document.getElementById('pm-avatar');
   el.className = `profile-avatar-large ${avatarClass(uid)}`;
@@ -2195,7 +2218,7 @@ window.openProfile = async function(uid) {
   document.getElementById('pm-name').textContent = displayName;
   document.getElementById('pm-status').textContent = data.status || '✨ StudentHub member';
   document.getElementById('pm-msgs').textContent = data.msgCount || 0;
-  document.getElementById('pm-joined').textContent = data.joinDate?.toDate ? formatDate(data.joinDate.toDate()) : 'Today';
+  document.getElementById('pm-joined').textContent = data.joinDate ? formatDate(new Date(data.joinDate)) : 'Today';
   document.getElementById('pm-own-controls').classList.toggle('hidden', !isOwn);
   document.getElementById('pm-other-controls').classList.toggle('hidden', isOwn);
   if (isOwn) document.getElementById('pm-status-input').value = data.status || '';
@@ -2205,7 +2228,7 @@ window.openProfile = async function(uid) {
 window.saveStatus = async function() {
   const status = document.getElementById('pm-status-input').value.trim();
   if (!currentUser) return;
-  await updateDoc(doc(db, 'users', currentUser.uid), { status });
+  await update(ref(db, 'users/' + currentUser.uid), { status });
   document.getElementById('pm-status').textContent = status;
   showToast('✅ Status updated.', 'success');
 };
@@ -2355,7 +2378,7 @@ window.togglePresence = function() {
   presenceEnabled = !presenceEnabled;
   document.getElementById('presence-toggle').classList.toggle('on', presenceEnabled);
   if (currentUser) {
-    setDoc(doc(db, 'presence', currentUser.uid), { online: presenceEnabled }, { merge: true });
+    update(ref(db, 'presence/' + currentUser.uid), { online: presenceEnabled });
   }
 };
 window.setTheme = function(theme) {
@@ -2421,11 +2444,11 @@ function updateUnreadBadge() {
 ══════════════════════════════════════════ */
 async function loadStats(inPanel=false) {
   const [usersSnap, msgsSnap] = await Promise.all([
-    getDocs(collection(db, 'users')),
-    getDocs(collection(db, 'messages'))
+    get(ref(db, 'users')),
+    get(ref(db, 'messages'))
   ]);
-  const totalUsers = usersSnap.size;
-  const totalMsgs = msgsSnap.size;
+  const totalUsers = usersSnap.exists() ? Object.keys(usersSnap.val()).length : 0;
+  const totalMsgs = msgsSnap.exists() ? Object.keys(msgsSnap.val()).length : 0;
   document.getElementById('stat-users').textContent = totalUsers > 0 ? totalUsers + '+' : '0';
   document.getElementById('stat-msgs').textContent = totalMsgs > 0 ? totalMsgs + '+' : '0';
   if (inPanel) {
