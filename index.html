@@ -1519,9 +1519,12 @@ window.doLogin = async function() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
   if (!email || !pass) return showAuthError('Please fill all fields.');
+  const btn = document.querySelector('#form-login .auth-submit');
+  btn.textContent = 'Signing in…'; btn.disabled = true;
   try {
     await signInWithEmailAndPassword(auth, email, pass);
   } catch(e) {
+    btn.textContent = 'Sign In'; btn.disabled = false;
     showAuthError(e.message.replace('Firebase: ','').replace(/\(auth.*\)/,''));
   }
 };
@@ -1532,15 +1535,19 @@ window.doSignup = async function() {
   if (!username || !email || !pass) return showAuthError('Please fill all fields.');
   if (username.length < 2) return showAuthError('Username must be at least 2 characters.');
   if (!/^[a-zA-Z0-9_]+$/.test(username)) return showAuthError('Username: letters, numbers, underscore only.');
+  const btn = document.querySelector('#form-signup .auth-submit');
+  btn.textContent = 'Creating account…'; btn.disabled = true;
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(cred.user, { displayName: username });
-    await setDoc(doc(db, 'users', cred.user.uid), {
+    // Fire-and-forget profile + Firestore write — don't block auth state
+    updateProfile(cred.user, { displayName: username });
+    setDoc(doc(db, 'users', cred.user.uid), {
       username, email, joinDate: serverTimestamp(),
       status: '✨ New to StudentHub!', msgCount: 0
     });
     showToast('🎉 Welcome to StudentHub!', 'success');
   } catch(e) {
+    btn.textContent = 'Create Account'; btn.disabled = false;
     showAuthError(e.message.replace('Firebase: ','').replace(/\(auth.*\)/,''));
   }
 };
@@ -1559,15 +1566,21 @@ onAuthStateChanged(auth, async user => {
     window.currentUser = user;
     document.getElementById('sidebar-username').textContent = user.displayName || 'User';
     sidebarAvatarInit(user);
-    const uRef = doc(db, 'users', user.uid);
-    const uSnap = await getDoc(uRef);
-    if (uSnap.exists()) userData = uSnap.data();
-    showScreen('app-screen');
-    initPresence();
-    initChat();
-    loadOnlineUsers();
-    loadStats();
     document.querySelector('#message-input').placeholder = `Message #${currentChannel}...`;
+
+    // Show the app immediately — don't block on Firestore
+    showScreen('app-screen');
+
+    // Kick off all background tasks in parallel — none of these need to block the UI
+    Promise.all([
+      getDoc(doc(db, 'users', user.uid)).then(snap => { if (snap.exists()) userData = snap.data(); }),
+      initPresence(),
+      loadOnlineUsers(),
+      loadStats()
+    ]).catch(e => console.warn('Background init error', e));
+
+    // Start chat listener immediately (non-blocking)
+    initChat();
   }
 });
 
