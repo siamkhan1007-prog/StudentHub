@@ -595,6 +595,8 @@ a { text-decoration: none; color: inherit; }
   padding: 12px 16px;
   background: var(--bg-glass); backdrop-filter: blur(12px);
   border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  position: relative;
 }
 .reply-preview {
   display: flex; align-items: center; gap: 10px;
@@ -639,9 +641,9 @@ a { text-decoration: none; color: inherit; }
 .send-btn:active { transform: scale(0.96); }
 .send-btn:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
 
-/* Emoji picker */
+/* Emoji picker — anchored to .input-area which is position:relative */
 .emoji-picker {
-  position: absolute; bottom: 70px; left: 20px;
+  position: absolute; bottom: calc(100% + 8px); left: 16px;
   background: var(--bg-glass); backdrop-filter: blur(20px);
   border: 1px solid var(--border-subtle); border-radius: var(--radius-xl);
   padding: 12px; width: 300px;
@@ -1180,6 +1182,10 @@ a { text-decoration: none; color: inherit; }
 
       <!-- Input area -->
       <div class="input-area" id="input-area">
+        <!-- Emoji picker — inside input-area so position:absolute anchors correctly -->
+        <div class="emoji-picker" id="emoji-picker">
+          <div class="emoji-grid" id="emoji-grid"></div>
+        </div>
         <div class="reply-preview hidden" id="reply-preview">
           <div class="reply-preview-content">
             <div class="reply-preview-author" id="reply-author"></div>
@@ -1209,10 +1215,6 @@ a { text-decoration: none; color: inherit; }
         </div>
       </div>
 
-      <!-- Emoji picker -->
-      <div class="emoji-picker" id="emoji-picker">
-        <div class="emoji-grid" id="emoji-grid"></div>
-      </div>
     </div>
 
     <!-- RIGHT PANEL -->
@@ -1539,8 +1541,9 @@ window.doSignup = async function() {
   btn.textContent = 'Creating account…'; btn.disabled = true;
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    // Fire-and-forget profile + Firestore write — don't block auth state
-    updateProfile(cred.user, { displayName: username });
+    // Must await updateProfile so displayName is set before onAuthStateChanged fires
+    await updateProfile(cred.user, { displayName: username });
+    // Firestore user doc can be fire-and-forget (non-critical for chat)
     setDoc(doc(db, 'users', cred.user.uid), {
       username, email, joinDate: serverTimestamp(),
       status: '✨ New to StudentHub!', msgCount: 0
@@ -1625,18 +1628,44 @@ function renderOnlineUsers() {
 function initChat() {
   if (messagesUnsubscribe) messagesUnsubscribe();
   const msgsEl = document.getElementById('messages');
-  // Load last 10 messages
-  const q = query(collection(db, 'messages'), orderBy('timestamp', 'desc'), limit(10));
-  getDocs(q).then(snap => {
-    const msgs = [];
-    snap.forEach(d => msgs.unshift({ id: d.id, ...d.data() }));
-    msgs.forEach(m => renderMessage(m, false));
-    scrollToBottom();
-    // Now subscribe to new
-    const latest = msgs.length ? msgs[msgs.length-1].timestamp : null;
-    subscribeToNew(latest);
+  let initialLoad = true;
+
+  // Single onSnapshot — replaces the broken getDocs+subscribeToNew pattern.
+  // The old approach passed the last message's serverTimestamp() as a cursor,
+  // but serverTimestamp() is null locally until Firestore confirms the write,
+  // so the where('timestamp', '>', null) filter silently dropped all messages
+  // for every other connected user.
+  const q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'), limit(60));
+  messagesUnsubscribe = onSnapshot(q, snap => {
+    snap.docChanges().forEach(change => {
+      if (change.type === 'added') {
+        const data = { id: change.doc.id, ...change.doc.data() };
+        if (blockedUsers.has(data.uid)) return;
+        renderMessage(data, !initialLoad);
+        if (!initialLoad) {
+          const atBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 120;
+          if (atBottom) scrollToBottom();
+          else if (data.uid !== currentUser?.uid) {
+            unreadCount++;
+            updateUnreadBadge();
+            if (data.text && data.text.includes(`@${currentUser.displayName}`)) {
+              showToast(`📣 ${data.username} mentioned you!`, 'info');
+              playMentionSound();
+            } else if (soundEnabled) playMsgSound();
+          }
+        }
+      } else if (change.type === 'modified') {
+        const data = { id: change.doc.id, ...change.doc.data() };
+        updateMessageEl(data);
+      } else if (change.type === 'removed') {
+        const el = document.getElementById('msg-' + change.doc.id);
+        if (el) el.remove();
+      }
+    });
+    if (initialLoad) { initialLoad = false; scrollToBottom(); }
   });
-  // Typing
+
+  // Typing indicator
   const tq = query(collection(db, 'typing'));
   typingUnsubscribe = onSnapshot(tq, snap => {
     const typers = [];
@@ -1652,41 +1681,6 @@ function initChat() {
     } else {
       el.style.opacity = '0';
     }
-  });
-}
-
-function subscribeToNew(afterTimestamp) {
-  let q;
-  if (afterTimestamp) {
-    q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'), where('timestamp', '>', afterTimestamp));
-  } else {
-    q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'));
-  }
-  messagesUnsubscribe = onSnapshot(q, snap => {
-    snap.docChanges().forEach(change => {
-      if (change.type === 'added') {
-        const data = { id: change.doc.id, ...change.doc.data() };
-        if (blockedUsers.has(data.uid)) return;
-        renderMessage(data, true);
-        const msgsEl = document.getElementById('messages');
-        const atBottom = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 120;
-        if (atBottom) scrollToBottom();
-        else if (data.uid !== currentUser?.uid) {
-          unreadCount++;
-          updateUnreadBadge();
-          if (data.text && data.text.includes(`@${currentUser.displayName}`)) {
-            showToast(`📣 ${data.username} mentioned you!`, 'info');
-            playMentionSound();
-          } else if (soundEnabled) playMsgSound();
-        }
-      } else if (change.type === 'modified') {
-        const data = { id: change.doc.id, ...change.doc.data() };
-        updateMessageEl(data);
-      } else if (change.type === 'removed') {
-        const el = document.getElementById('msg-' + change.doc.id);
-        if (el) el.remove();
-      }
-    });
   });
 }
 
